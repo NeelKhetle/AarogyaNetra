@@ -49,12 +49,21 @@ interface AppState {
   scanStatus: 'idle' | 'capturing' | 'processing' | 'complete';
   setScanStatus: (status: AppState['scanStatus']) => void;
   runScan: () => ScanResult | null;
-  fetchDiabetesPrediction: (patientData: {
-    glucose: number;
-    bmi: number;
+  fetchAIPredictions: (patientData: {
     age: number;
-    bp: number;
+    gender: number;
+    height: number;
+    weight: number;
+    bmi: number;
+    glucose: number;
+    bp_sys: number;
+    bp_dia: number;
+    cholesterol: number;
     insulin: number;
+    red_pixel: number;
+    green_pixel: number;
+    blue_pixel: number;
+    hemoglobin: number;
   }) => Promise<ScanResult | null>;
 
   // DREM
@@ -166,14 +175,14 @@ export const useAppStore = create<AppState>((set, get) => ({
     return result;
   },
 
-  fetchDiabetesPrediction: async (patientData) => {
+  fetchAIPredictions: async (patientData) => {
     const { user, labReports } = get();
     if (!user) return null;
 
     set({ scanStatus: 'processing' });
 
     try {
-      const response = await fetch('http://192.168.1.14:8000/predict/diabetes', {
+      const response = await fetch('http://10.0.2.2:8000/predict/all', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(patientData),
@@ -185,44 +194,51 @@ export const useAppStore = create<AppState>((set, get) => ({
 
       const apiResult = await response.json();
 
-      // Get base simulated result for other vitals/diseases
+      // Get base simulated result for other vitals
       const result = runScanSimulation(user.id, user, labReports);
 
-      // Overwrite diabetes prediction with real API data
-      const riskScore = apiResult.risk_score;
-      const prediction = apiResult.prediction;
-      
-      let riskLevel: 'low' | 'moderate' | 'high' | 'critical' = 'low';
-      if (riskScore < 0.25) riskLevel = 'low';
-      else if (riskScore < 0.50) riskLevel = 'moderate';
-      else if (riskScore < 0.75) riskLevel = 'high';
-      else riskLevel = 'critical';
+      // Function to map score to risk level
+      const getRiskLevel = (score: number) => {
+        if (score < 0.25) return 'low';
+        if (score < 0.50) return 'moderate';
+        if (score < 0.75) return 'high';
+        return 'critical';
+      };
 
+      // Map API Response to ScanResult
       result.diseases.diabetes = {
         ...result.diseases.diabetes,
-        riskLevel,
-        riskScore,
-        category: prediction === 1 ? 'Diabetic' : 'Non-Diabetic',
+        riskLevel: getRiskLevel(apiResult.diabetes_risk),
+        riskScore: apiResult.diabetes_risk,
+        confidence: 0.99,
+      };
+
+      result.diseases.hypertension = {
+        ...result.diseases.hypertension,
+        riskLevel: getRiskLevel(apiResult.hypertension_risk),
+        riskScore: apiResult.hypertension_risk,
+        confidence: 0.99,
+      };
+
+      result.diseases.anemia = {
+        ...result.diseases.anemia,
+        riskLevel: getRiskLevel(apiResult.anemia_risk),
+        riskScore: apiResult.anemia_risk,
         confidence: 0.99,
       };
 
       // Map SHAP values to ARE explanation
-      if (apiResult.shap_values) {
+      if (apiResult.shap_values && apiResult.shap_values.length > 0) {
         result.areExplanation = {
-          summary: prediction === 1 ? 'High risk of diabetes detected based on your vitals.' : 'Low risk of diabetes detected.',
+          summary: `High risk detected for ${apiResult.highest_risk_disease} based on vital data.`,
           details: ['Analysis powered by XGBoost ML Model', 'Feature contributions calculated using SHAP'],
           confidenceScore: 0.99,
-          counterfactual: 'Lowering BMI and Glucose could reduce your risk.',
-          featureImportance: [
-            { feature: 'Glucose', contribution: apiResult.shap_values[0][0], description: 'Blood glucose level' },
-            { feature: 'Blood Pressure', contribution: apiResult.shap_values[0][1], description: 'BP' },
-            { feature: 'Skin Thickness', contribution: apiResult.shap_values[0][2], description: 'Skin' },
-            { feature: 'Insulin', contribution: apiResult.shap_values[0][3], description: 'Insulin' },
-            { feature: 'BMI', contribution: apiResult.shap_values[0][4], description: 'Body Mass Index' },
-            { feature: 'Diabetes Pedigree', contribution: apiResult.shap_values[0][5], description: 'Genetics' },
-            { feature: 'Age', contribution: apiResult.shap_values[0][6], description: 'Age' },
-            { feature: 'Pregnancies', contribution: apiResult.shap_values[0][7], description: 'Pregnancies' },
-          ].sort((a, b) => Math.abs(b.contribution) - Math.abs(a.contribution))
+          counterfactual: 'Managing key factors could reduce your risk.',
+          featureImportance: apiResult.shap_values[0].map((val: number, index: number) => ({
+            feature: `Feature ${index}`,
+            contribution: val,
+            description: `Impact of feature ${index}`
+          })).sort((a: any, b: any) => Math.abs(b.contribution) - Math.abs(a.contribution))
         };
       }
 

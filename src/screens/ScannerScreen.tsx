@@ -252,7 +252,7 @@ type ScanPhase = 'ready' | 'face-capture' | 'eye-capture' | 'processing' | 'done
 
 export const ScannerScreen: React.FC = () => {
   const navigation = useNavigation<NavProp>();
-  const { runScan, fetchDiabetesPrediction, user, labReports } = useAppStore();
+  const { runScan, fetchAIPredictions, user, labReports } = useAppStore();
   const [phase, setPhase] = useState<ScanPhase>('ready');
 
   // Camera permission
@@ -323,20 +323,30 @@ export const ScannerScreen: React.FC = () => {
     setPhase('processing');
 
     try {
-      // Create patient data using some defaults or latest lab values.
-      // E.g., user age, standard glucose if no lab report
       const latestGlucose = labReports?.find(r => r.values.fastingGlucose)?.values.fastingGlucose || 95;
-      const latestBP = labReports?.find(r => r.values.systolic)?.values.systolic || 120;
+      const latestBPSys = labReports?.find(r => r.values.systolic)?.values.systolic || 120;
+      const latestBPDia = labReports?.find(r => r.values.diastolic)?.values.diastolic || 80;
+      const latestCholesterol = labReports?.find(r => r.values.totalCholesterol)?.values.totalCholesterol || 1.0;
+      const latestHemoglobin = labReports?.find(r => r.values.hemoglobin)?.values.hemoglobin || 14.0;
       
       const patientData = {
-        glucose: latestGlucose,
-        bmi: user?.weight && user?.height ? (user.weight / ((user.height / 100) ** 2)) : 24,
         age: user?.age || 35,
-        bp: latestBP,
-        insulin: 15, // Default insulin
+        gender: user?.gender === 'female' ? 0 : 1,
+        height: user?.height || 170,
+        weight: user?.weight || 70,
+        bmi: user?.weight && user?.height ? (user.weight / ((user.height / 100) ** 2)) : 24,
+        glucose: latestGlucose,
+        bp_sys: latestBPSys,
+        bp_dia: latestBPDia,
+        cholesterol: latestCholesterol,
+        insulin: 15,
+        red_pixel: 45.0,   // default proxy based on simulation scope
+        green_pixel: 30.0,
+        blue_pixel: 25.0,
+        hemoglobin: latestHemoglobin,
       };
 
-      const result = await fetchDiabetesPrediction(patientData);
+      const result = await fetchAIPredictions(patientData);
       
       if (result) {
         setPhase('done');
