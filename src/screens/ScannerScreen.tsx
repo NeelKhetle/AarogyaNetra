@@ -252,7 +252,7 @@ type ScanPhase = 'ready' | 'face-capture' | 'eye-capture' | 'processing' | 'done
 
 export const ScannerScreen: React.FC = () => {
   const navigation = useNavigation<NavProp>();
-  const { runScan } = useAppStore();
+  const { runScan, fetchDiabetesPrediction, user, labReports } = useAppStore();
   const [phase, setPhase] = useState<ScanPhase>('ready');
 
   // Camera permission
@@ -319,17 +319,33 @@ export const ScannerScreen: React.FC = () => {
     setPhase('eye-capture');
   };
 
-  const handleEyeCapture = () => {
+  const handleEyeCapture = async () => {
     setPhase('processing');
 
-    // Run AI analysis (uses profile-deterministic simulation + lab data)
-    setTimeout(() => {
-      const result = runScan();
+    try {
+      // Create patient data using some defaults or latest lab values.
+      // E.g., user age, standard glucose if no lab report
+      const latestGlucose = labReports?.find(r => r.values.fastingGlucose)?.values.fastingGlucose || 95;
+      const latestBP = labReports?.find(r => r.values.systolic)?.values.systolic || 120;
+      
+      const patientData = {
+        glucose: latestGlucose,
+        bmi: user?.weight && user?.height ? (user.weight / ((user.height / 100) ** 2)) : 24,
+        age: user?.age || 35,
+        bp: latestBP,
+        insulin: 15, // Default insulin
+      };
+
+      const result = await fetchDiabetesPrediction(patientData);
+      
       if (result) {
         setPhase('done');
         navigation.replace('Results', { scanId: result.scanId });
       }
-    }, 3000);
+    } catch (error) {
+      Alert.alert('Processing Failed', 'Network Request Failed. Please ensure your backend is running.');
+      setPhase('ready');
+    }
   };
 
   // ─── No Permission ──────────────────
