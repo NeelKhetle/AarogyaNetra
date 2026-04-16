@@ -21,6 +21,7 @@ import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Colors } from '../theme';
 import { useAppStore } from '../store/useAppStore';
+import { useLanguage } from '../i18n/LanguageContext';
 import type { HomeStackParamList, ScanHistoryEntry } from '../models/types';
 
 type NavProp = NativeStackNavigationProp<HomeStackParamList, 'Home'>;
@@ -28,7 +29,7 @@ type NavProp = NativeStackNavigationProp<HomeStackParamList, 'Home'>;
 const { width } = Dimensions.get('window');
 
 // ─── Animated scan button ─────────────────────────────
-const PulseScanButton: React.FC<{ onPress: () => void }> = ({ onPress }) => {
+const PulseScanButton: React.FC<{ onPress: () => void; label: string; sublabel: string }> = ({ onPress, label, sublabel }) => {
   const pulse1 = useRef(new Animated.Value(1)).current;
   const pulse2 = useRef(new Animated.Value(1)).current;
   const scale = useRef(new Animated.Value(1)).current;
@@ -71,8 +72,8 @@ const PulseScanButton: React.FC<{ onPress: () => void }> = ({ onPress }) => {
           activeOpacity={1}
         >
           <Text style={scanBtnStyles.cameraIcon}>📷</Text>
-          <Text style={scanBtnStyles.label}>Start Face Scan</Text>
-          <Text style={scanBtnStyles.sublabel}>Tap to begin health screening</Text>
+          <Text style={scanBtnStyles.label}>{label}</Text>
+          <Text style={scanBtnStyles.sublabel}>{sublabel}</Text>
         </TouchableOpacity>
       </Animated.View>
     </View>
@@ -264,6 +265,7 @@ const trendStyles = StyleSheet.create({
 export const HomeScreen: React.FC = () => {
   const navigation = useNavigation<NavProp>();
   const { user, scanHistory, currentScan, initializeDefaultUser } = useAppStore();
+  const { t } = useLanguage();
 
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideY = useRef(new Animated.Value(20)).current;
@@ -278,7 +280,7 @@ export const HomeScreen: React.FC = () => {
 
   const lastScan = scanHistory[0];
   const greetingHour = new Date().getHours();
-  const greeting = greetingHour < 12 ? 'Good Morning' : greetingHour < 17 ? 'Good Afternoon' : 'Good Evening';
+  const greeting = greetingHour < 12 ? t('good_morning') : greetingHour < 17 ? t('good_afternoon') : t('good_evening');
 
   return (
     <ScrollView
@@ -297,7 +299,7 @@ export const HomeScreen: React.FC = () => {
           <View style={styles.headerRight}>
             {scanHistory.length > 0 && (
               <View style={styles.scanCountBadge}>
-                <Text style={styles.scanCountText}>{scanHistory.length} scans</Text>
+                <Text style={styles.scanCountText}>{scanHistory.length} {t('scans')}</Text>
               </View>
             )}
           </View>
@@ -305,10 +307,12 @@ export const HomeScreen: React.FC = () => {
 
         {/* ── Primary CTA — Face Scan ── */}
         <View style={styles.scanSection}>
-          <PulseScanButton onPress={() => navigation.navigate('Scanner', { cameraMode: 'normal' })} />
-          <Text style={styles.scanHint}>
-            Align your face, hold steady · AI analyses in ~15 seconds
-          </Text>
+          <PulseScanButton
+            onPress={() => navigation.navigate('Scanner', { cameraMode: 'normal' })}
+            label={t('start_scan')}
+            sublabel={t('scan_hint')}
+          />
+          <Text style={styles.scanHint}>{t('scan_instruction')}</Text>
 
           {/* Eye scan shortcut */}
           <TouchableOpacity
@@ -317,7 +321,7 @@ export const HomeScreen: React.FC = () => {
             activeOpacity={0.8}
           >
             <Text style={styles.eyeScanIcon}>👁️</Text>
-            <Text style={styles.eyeScanLabel}>Eye Scan (Anemia Detection)</Text>
+            <Text style={styles.eyeScanLabel}>{t('eye_scan_label')}</Text>
             <Text style={styles.eyeScanArrow}>→</Text>
           </TouchableOpacity>
         </View>
@@ -325,9 +329,9 @@ export const HomeScreen: React.FC = () => {
         {/* ── What We Detect ── */}
         <View style={styles.detectRow}>
           {[
-            { icon: '❤️', label: 'Hypertension', color: '#ef4444' },
-            { icon: '🩸', label: 'Diabetes', color: '#006e2f' },
-            { icon: '👁️', label: 'Anemia', color: '#f59e0b' },
+            { icon: '❤️', label: t('hypertension'), color: '#ef4444' },
+            { icon: '🩸', label: t('diabetes'),     color: '#006e2f' },
+            { icon: '👁️', label: t('anemia'),       color: '#f59e0b' },
           ].map((d, i) => (
             <View key={i} style={[styles.detectChip, { backgroundColor: `${d.color}10` }]}>
               <Text>{d.icon}</Text>
@@ -340,12 +344,12 @@ export const HomeScreen: React.FC = () => {
         {lastScan ? (
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
-              <Text style={styles.sectionTitle}>Last Scan Results</Text>
+              <Text style={styles.sectionTitle}>{t('last_scan_results')}</Text>
               <TouchableOpacity
                 onPress={() => navigation.navigate('Results', { scanId: lastScan.scanId })}
                 activeOpacity={0.7}
               >
-                <Text style={styles.seeAll}>View Report →</Text>
+                <Text style={styles.seeAll}>{t('view_report')} →</Text>
               </TouchableOpacity>
             </View>
 
@@ -354,9 +358,9 @@ export const HomeScreen: React.FC = () => {
               <View style={styles.lastScanTop}>
                 <ScoreRing score={lastScan.overallScore} />
                 <View style={{ flex: 1, marginLeft: 20 }}>
-                  <RiskBar label="Hypertension" value={lastScan.hypertensionRisk} color="#ef4444" icon="❤️" />
-                  <RiskBar label="Diabetes" value={lastScan.diabetesRisk} color="#006e2f" icon="🩸" />
-                  <RiskBar label="Anemia" value={lastScan.anemiaRisk} color="#f59e0b" icon="👁️" />
+                  <RiskBar label={t('hypertension')} value={lastScan.hypertensionRisk} color="#ef4444" icon="❤️" />
+                  <RiskBar label={t('diabetes')}     value={lastScan.diabetesRisk}     color="#006e2f" icon="🩸" />
+                  <RiskBar label={t('anemia')}       value={lastScan.anemiaRisk}       color="#f59e0b" icon="👁️" />
                 </View>
               </View>
 

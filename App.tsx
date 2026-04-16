@@ -12,6 +12,7 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { AppNavigator } from './src/navigation/AppNavigator';
 import { Colors } from './src/theme';
 import { useAppStore } from './src/store/useAppStore';
+import { LanguageProvider } from './src/i18n/LanguageContext';
 
 function App(): React.JSX.Element {
   const { loadPersistedData } = useAppStore();
@@ -24,18 +25,20 @@ function App(): React.JSX.Element {
   }, []);
 
   return (
-    <GestureHandlerRootView style={styles.root}>
-      <SafeAreaProvider>
-        <StatusBar
-          barStyle="dark-content"
-          backgroundColor={Colors.background}
-          translucent={false}
-        />
-        <View style={styles.container}>
-          <AppNavigator />
-        </View>
-      </SafeAreaProvider>
-    </GestureHandlerRootView>
+    <LanguageProvider>
+      <GestureHandlerRootView style={styles.root}>
+        <SafeAreaProvider>
+          <StatusBar
+            barStyle="dark-content"
+            backgroundColor={Colors.background}
+            translucent={false}
+          />
+          <View style={styles.container}>
+            <AppNavigator />
+          </View>
+        </SafeAreaProvider>
+      </GestureHandlerRootView>
+    </LanguageProvider>
   );
 }
 

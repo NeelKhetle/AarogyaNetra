@@ -1,6 +1,7 @@
 /**
  * ArogyaNetra AI - Global App Store (Zustand + Persistent Storage)
- * Manages user profile, current scan, history, lab reports, and family history
+ * Manages user profile, current scan, history, lab reports, family history,
+ * and the user's preferred display language.
  * Data persists across app restarts via SimpleStorage
  */
 
@@ -40,10 +41,15 @@ const STORAGE_KEYS = {
   SCAN_HISTORY: '@aarogya_scan_history',
   STORED_SCANS: '@aarogya_stored_scans',
   LAB_REPORTS: '@aarogya_lab_reports',
+  LANGUAGE: '@aarogya_language',
 };
 
 // ─── Store Shape ──────────────────────────────────────
 interface AppState {
+  // Language
+  language: string;
+  setLanguage: (code: string) => void;
+
   // User
   user: UserProfile | null;
   setUser: (profile: Partial<UserProfile>) => void;
@@ -92,6 +98,14 @@ interface AppState {
 
 // ─── Store Implementation ─────────────────────────────
 export const useAppStore = create<AppState>((set, get) => ({
+  // ─── Language ───────────────────────
+  language: 'en',
+
+  setLanguage: (code) => {
+    set({ language: code });
+    SimpleStorage.setItem(STORAGE_KEYS.LANGUAGE, code);
+  },
+
   // ─── User ───────────────────────────
   user: null,
   dataLoaded: false,
@@ -334,11 +348,12 @@ export const useAppStore = create<AppState>((set, get) => ({
   // ─── Persistence ────────────────────
   loadPersistedData: async () => {
     try {
-      const [user, history, storedScans, labReports] = await Promise.all([
+      const [user, history, storedScans, labReports, savedLanguage] = await Promise.all([
         SimpleStorage.getJSON<UserProfile>(STORAGE_KEYS.USER),
         SimpleStorage.getJSON<ScanHistoryEntry[]>(STORAGE_KEYS.SCAN_HISTORY),
         SimpleStorage.getJSON<Record<string, ScanResult>>(STORAGE_KEYS.STORED_SCANS),
         SimpleStorage.getJSON<LabReportEntry[]>(STORAGE_KEYS.LAB_REPORTS),
+        SimpleStorage.getItem(STORAGE_KEYS.LANGUAGE),
       ]);
 
       set({
@@ -346,6 +361,7 @@ export const useAppStore = create<AppState>((set, get) => ({
         scanHistory: history || [],
         storedScans: storedScans || {},
         labReports: labReports || [],
+        language: savedLanguage || 'en',
         dataLoaded: true,
       });
     } catch (e) {

@@ -37,6 +37,7 @@ import type {
   LabReportsStackParamList,
 } from '../models/types';
 import { useAppStore } from '../store/useAppStore';
+import { useLanguage } from '../i18n/LanguageContext';
 
 // ─── Types for 3-tab nav ──────────────────────────────
 type ProfileStackParamList = {
@@ -149,6 +150,7 @@ function ProfileStackNavigator() {
 // ─── Main Navigator ────────────────────────────────────
 export function AppNavigator() {
   const { user, dataLoaded } = useAppStore();
+  const { t } = useLanguage();
   const [welcomed, setWelcomed] = React.useState(false);
 
   // Wait for persisted data to load before deciding
@@ -193,7 +195,7 @@ export function AppNavigator() {
           name="HomeTab"
           component={HomeStackNavigator}
           options={{
-            tabBarLabel: 'Home',
+            tabBarLabel: t('tab_home'),
             tabBarIcon: ({ focused }) => (
               <TabIcon emoji="🏠" focused={focused} color={Colors.primary} />
             ),
@@ -205,7 +207,7 @@ export function AppNavigator() {
           name="ChatbotTab"
           component={DoctorScreen}
           options={{
-            tabBarLabel: 'Doctor',
+            tabBarLabel: t('tab_doctor'),
             tabBarIcon: ({ focused }) => (
               <TabIcon emoji="👨‍⚕️" focused={focused} color={Colors.secondary} />
             ),
@@ -217,7 +219,7 @@ export function AppNavigator() {
           name="ProfileTab"
           component={ProfileStackNavigator}
           options={{
-            tabBarLabel: 'Profile',
+            tabBarLabel: t('tab_profile'),
             tabBarIcon: ({ focused }) => (
               <TabIcon emoji="👤" focused={focused} color={Colors.accent} />
             ),

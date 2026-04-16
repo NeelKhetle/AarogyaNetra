@@ -14,12 +14,16 @@ import {
   Share,
   TouchableOpacity,
   Dimensions,
+  FlatList,
+  Modal,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { GlassCard, AnimatedButton } from '../components/common';
 import { Colors, Typography, Spacing, BorderRadius } from '../theme';
 import { useAppStore } from '../store/useAppStore';
+import { useLanguage } from '../i18n/LanguageContext';
+import { LANGUAGE_LIST, type LanguageCode } from '../i18n/translations';
 import type { ProfileStackParamList, ScanHistoryEntry } from '../models/types';
 
 type NavProp = NativeStackNavigationProp<ProfileStackParamList, 'ProfileMain'>;
@@ -130,7 +134,17 @@ const historyCardStyles = StyleSheet.create({
 
 export const ProfileScreen: React.FC = () => {
   const navigation = useNavigation<NavProp>();
-  const { user, setUser, scanHistory, labReports, storedScans } = useAppStore();
+  const { user, setUser, scanHistory, labReports, storedScans, language, setLanguage } = useAppStore();
+  const { t } = useLanguage();
+
+  // ─── Language picker state ────────────────────────────
+  const [langModalVisible, setLangModalVisible] = useState(false);
+  const [langSearch, setLangSearch] = useState('');
+  const currentLangInfo = LANGUAGE_LIST.find(l => l.code === language) || LANGUAGE_LIST.find(l => l.code === 'en')!;
+  const filteredLangs = LANGUAGE_LIST.filter(l =>
+    l.label.toLowerCase().includes(langSearch.toLowerCase()) ||
+    l.native.toLowerCase().includes(langSearch.toLowerCase())
+  );
 
   const [name, setName] = useState(user?.name || '');
   const [age, setAge] = useState(user?.age?.toString() || '30');
@@ -287,7 +301,7 @@ export const ProfileScreen: React.FC = () => {
         </View>
         <Text style={styles.userName}>{name || 'User'}</Text>
         <Text style={styles.userMeta}>
-          {scanHistory.length} scans • {labReports.length} reports • {user?.gender || 'male'} • age {user?.age || 30}
+          {scanHistory.length} {t('scans')} · {labReports.length} {t('reports')} · {user?.gender || 'male'} · {t('age')} {user?.age || 30}
         </Text>
         {bmi && (
           <View style={[styles.bmiBadge, { backgroundColor: `${bmiCategory?.color}15`, borderColor: `${bmiCategory?.color}30` }]}>
@@ -302,7 +316,7 @@ export const ProfileScreen: React.FC = () => {
       <GlassCard style={styles.formCard}>
         <Text style={styles.sectionTitle}>👤 Personal Information</Text>
 
-        <Text style={styles.fieldLabel}>Full Name</Text>
+        <Text style={styles.fieldLabel}>{t('full_name')}</Text>
         <TextInput
           style={styles.input}
           value={name}
@@ -311,7 +325,7 @@ export const ProfileScreen: React.FC = () => {
           placeholderTextColor={Colors.textTertiary}
         />
 
-        <Text style={styles.fieldLabel}>Age</Text>
+        <Text style={styles.fieldLabel}>{t('age')}</Text>
         <TextInput
           style={styles.input}
           value={age}
@@ -346,11 +360,11 @@ export const ProfileScreen: React.FC = () => {
           </View>
         </View>
 
-        <Text style={styles.fieldLabel}>Gender</Text>
+        <Text style={styles.fieldLabel}>{t('gender')}</Text>
         <View style={styles.genderRow}>
-          <GenderButton value="male" label="Male" emoji="👨" />
-          <GenderButton value="female" label="Female" emoji="👩" />
-          <GenderButton value="other" label="Other" emoji="🧑" />
+          <GenderButton value="male" label={t('male')} emoji="👨" />
+          <GenderButton value="female" label={t('female')} emoji="👩" />
+          <GenderButton value="other" label={t('other')} emoji="🧑" />
         </View>
       </GlassCard>
 
@@ -387,7 +401,7 @@ export const ProfileScreen: React.FC = () => {
         )}
 
         <AnimatedButton
-          title={abhaVerified ? "✅ ABHA Verified" : "🔗 Verify & Link ABHA ID"}
+          title={abhaVerified ? `✅ ${t('abha_verified')}` : `🔗 ${t('verify_abha')}`}
           onPress={handleVerifyAbha}
           variant={abhaVerified ? 'outline' : 'primary'}
           size="small"
@@ -410,7 +424,7 @@ export const ProfileScreen: React.FC = () => {
       {/* Save Button */}
       <View style={styles.saveContainer}>
         <AnimatedButton
-          title="💾  Save Profile"
+          title={`💾  ${t('save_profile')}`}
           onPress={handleSave}
           variant="primary"
           size="large"
@@ -422,7 +436,7 @@ export const ProfileScreen: React.FC = () => {
       {/* ── Scan History ── */}
       <GlassCard style={styles.formCard}>
         <View style={styles.historyHeader}>
-          <Text style={styles.sectionTitle}>📊 Scan History</Text>
+          <Text style={styles.sectionTitle}>📊 {t('scan_history')}</Text>
           <View style={styles.historyCountBadge}>
             <Text style={styles.historyCount}>{scanHistory.length}</Text>
           </View>
@@ -431,7 +445,7 @@ export const ProfileScreen: React.FC = () => {
         {scanHistory.length === 0 ? (
           <View style={styles.noHistoryWrap}>
             <Text style={{ fontSize: 32, marginBottom: 8 }}>📭</Text>
-            <Text style={styles.noHistoryText}>No scans yet. Complete a Face Scan from the Home tab to see your history here.</Text>
+            <Text style={styles.noHistoryText}>{t('no_scans_yet')}</Text>
           </View>
         ) : (
           <>
@@ -455,32 +469,107 @@ export const ProfileScreen: React.FC = () => {
         )}
       </GlassCard>
 
+      {/* ── Language Settings ── */}
+      <GlassCard style={styles.formCard}>
+        <Text style={styles.sectionTitle}>🌐 {t('language_settings')}</Text>
+        <Text style={styles.fieldDesc}>{t('language_settings_desc')}</Text>
+
+        <TouchableOpacity
+          style={langPickerStyles.selector}
+          onPress={() => { setLangSearch(''); setLangModalVisible(true); }}
+          activeOpacity={0.8}
+        >
+          <Text style={langPickerStyles.flag}>{currentLangInfo.flag}</Text>
+          <View style={{ flex: 1 }}>
+            <Text style={langPickerStyles.native}>{currentLangInfo.native}</Text>
+            <Text style={langPickerStyles.english}>{currentLangInfo.label}</Text>
+          </View>
+          <Text style={langPickerStyles.chevron}>▼</Text>
+        </TouchableOpacity>
+
+        {/* Language Modal */}
+        <Modal
+          visible={langModalVisible}
+          animationType="slide"
+          presentationStyle="pageSheet"
+          onRequestClose={() => setLangModalVisible(false)}
+        >
+          <View style={langPickerStyles.modal}>
+            <View style={langPickerStyles.modalHeader}>
+              <Text style={langPickerStyles.modalTitle}>🌐 {t('choose_language')}</Text>
+              <TouchableOpacity onPress={() => setLangModalVisible(false)}>
+                <Text style={langPickerStyles.close}>✕</Text>
+              </TouchableOpacity>
+            </View>
+
+            {/* Search */}
+            <TextInput
+              style={langPickerStyles.search}
+              value={langSearch}
+              onChangeText={setLangSearch}
+              placeholder={t('search_language')}
+              placeholderTextColor={Colors.textTertiary}
+            />
+
+            <FlatList
+              data={filteredLangs}
+              keyExtractor={item => item.code}
+              showsVerticalScrollIndicator={false}
+              renderItem={({ item: lang }) => {
+                const isActive = language === lang.code;
+                return (
+                  <TouchableOpacity
+                    style={[langPickerStyles.langRow, isActive && langPickerStyles.langRowActive]}
+                    onPress={() => {
+                      setLanguage(lang.code);
+                      setLangModalVisible(false);
+                    }}
+                    activeOpacity={0.75}
+                  >
+                    <Text style={{ fontSize: 22 }}>{lang.flag}</Text>
+                    <View style={{ flex: 1 }}>
+                      <Text style={[langPickerStyles.langNative, isActive && { color: Colors.primary }]}>
+                        {lang.native}
+                      </Text>
+                      <Text style={langPickerStyles.langEnglish}>{lang.label}</Text>
+                    </View>
+                    {isActive && (
+                      <View style={langPickerStyles.check}>
+                        <Text style={{ color: '#fff', fontWeight: '800' }}>✓</Text>
+                      </View>
+                    )}
+                  </TouchableOpacity>
+                );
+              }}
+            />
+          </View>
+        </Modal>
+      </GlassCard>
+
       {/* Data Backup */}
       <GlassCard style={styles.formCard}>
-        <Text style={styles.sectionTitle}>💾 Data & Backup</Text>
-        <Text style={styles.fieldDesc}>
-          All your data is stored locally on this device. Export a backup to keep your health records safe.
-        </Text>
+        <Text style={styles.sectionTitle}>💾 {t('data_backup')}</Text>
+        <Text style={styles.fieldDesc}>{t('data_backup_desc')}</Text>
 
         <View style={styles.dataStats}>
           <View style={styles.dataStat}>
             <Text style={styles.dataStatValue}>{scanHistory.length}</Text>
-            <Text style={styles.dataStatLabel}>Scans</Text>
+        <Text style={styles.dataStatLabel}>{t('scans')}</Text>
           </View>
           <View style={styles.dataStatDivider} />
           <View style={styles.dataStat}>
             <Text style={styles.dataStatValue}>{labReports.length}</Text>
-            <Text style={styles.dataStatLabel}>Lab Reports</Text>
+        <Text style={styles.dataStatLabel}>{t('reports')}</Text>
           </View>
           <View style={styles.dataStatDivider} />
           <View style={styles.dataStat}>
             <Text style={styles.dataStatValue}>{Object.keys(storedScans).length}</Text>
-            <Text style={styles.dataStatLabel}>Full Records</Text>
+        <Text style={styles.dataStatLabel}>{t('full_records')}</Text>
           </View>
         </View>
 
         <AnimatedButton
-          title="📦  Export All Data (Backup)"
+          title={`📦  ${t('export_data')}`}
           onPress={handleExportAll}
           variant="outline"
           fullWidth
@@ -787,5 +876,65 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '700',
     color: Colors.primary,
+  },
+});
+
+// ─── Language Picker Styles ───────────────────────────────────────────────────
+const langPickerStyles = StyleSheet.create({
+  selector: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: Colors.backgroundLight,
+    borderRadius: 14,
+    borderWidth: 1.5,
+    borderColor: Colors.primary,
+    padding: 14,
+    gap: 14,
+    marginTop: 8,
+  },
+  flag: { fontSize: 24 },
+  native: { fontSize: 15, fontWeight: '700', color: Colors.primary },
+  english: { fontSize: 11, color: Colors.textTertiary, marginTop: 2 },
+  chevron: { fontSize: 12, color: Colors.textTertiary, marginLeft: 4 },
+  // Modal
+  modal: { flex: 1, backgroundColor: Colors.background, paddingTop: 16 },
+  modalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingBottom: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.surfaceBorder,
+  },
+  modalTitle: { fontSize: 18, fontWeight: '800', color: Colors.textPrimary },
+  close: { fontSize: 20, color: Colors.textTertiary, padding: 4 },
+  search: {
+    margin: 16,
+    backgroundColor: Colors.backgroundLight,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: Colors.surfaceBorder,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    fontSize: 15,
+    color: Colors.textPrimary,
+  },
+  langRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 14,
+    paddingHorizontal: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.surfaceBorder,
+    gap: 14,
+  },
+  langRowActive: { backgroundColor: 'rgba(0,110,47,0.04)' },
+  langNative: { fontSize: 15, fontWeight: '700', color: Colors.textPrimary },
+  langEnglish: { fontSize: 11, color: Colors.textTertiary, marginTop: 2 },
+  check: {
+    width: 26, height: 26, borderRadius: 13,
+    backgroundColor: Colors.primary,
+    alignItems: 'center', justifyContent: 'center',
   },
 });
