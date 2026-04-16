@@ -1,74 +1,81 @@
 /**
- * ArogyaNetra AI - Design System Colors
- * Premium glassmorphic dark theme for medical application
+ * AarogyaNetra AI - Design System Colors
+ * "Empathetic Guardian" — Clean, calm health-tech palette
+ * Green primary, white surfaces, soft tonal layering
  */
 
 export const Colors = {
-  // Primary palette
-  primary: '#6C63FF',
-  primaryLight: '#8B85FF',
-  primaryDark: '#4A42E0',
+  // Primary palette (green health)
+  primary: '#006e2f',
+  primaryLight: '#22c55e',
+  primaryDark: '#004b1e',
+  primaryContainer: '#22c55e',
 
-  // Secondary
-  secondary: '#00D4AA',
-  secondaryLight: '#33DFC0',
-  secondaryDark: '#00B894',
+  // Secondary (blue actions)
+  secondary: '#0058be',
+  secondaryLight: '#2170e4',
+  secondaryDark: '#004395',
+  secondaryFixed: '#d8e2ff',
 
-  // Accent
-  accent: '#FF6B6B',
-  accentLight: '#FF8E8E',
-  accentDark: '#E55050',
+  // Accent / Tertiary
+  accent: '#9e4036',
+  accentLight: '#ff8b7c',
+  accentDark: '#7f2a21',
 
-  // Background
-  background: '#0A0E27',
-  backgroundLight: '#111638',
-  backgroundLighter: '#1A1F4A',
+  // Background & Surface (tonal layering)
+  background: '#f8f9fa',
+  backgroundLight: '#ffffff',
+  backgroundLighter: '#f3f4f5',
 
-  // Surface (glassmorphic)
-  surface: 'rgba(255,255,255,0.05)',
-  surfaceLight: 'rgba(255,255,255,0.08)',
-  surfaceBorder: 'rgba(255,255,255,0.1)',
-  surfaceBorderLight: 'rgba(255,255,255,0.15)',
+  // Surface hierarchy (no borders — use tonal shifts)
+  surface: '#ffffff',
+  surfaceLight: '#f3f4f5',
+  surfaceDim: '#d9dadb',
+  surfaceBorder: '#e1e3e4',       // ghost border only (15% opacity usage)
+  surfaceBorderLight: '#bccbb9',
+  surfaceContainer: '#edeeef',
+  surfaceContainerLow: '#f3f4f5',
+  surfaceContainerHigh: '#e7e8e9',
 
-  // Text
-  textPrimary: '#FFFFFF',
-  textSecondary: 'rgba(255,255,255,0.6)',
-  textTertiary: 'rgba(255,255,255,0.4)',
-  textInverse: '#0A0E27',
+  // Text (never pure black)
+  textPrimary: '#191c1d',
+  textSecondary: '#3d4a3d',
+  textTertiary: '#6d7b6c',
+  textInverse: '#ffffff',
 
   // Status colors
-  success: '#00E676',
-  successLight: '#69F0AE',
-  warning: '#FFD740',
-  warningLight: '#FFE57F',
-  danger: '#FF5252',
-  dangerLight: '#FF8A80',
+  success: '#22c55e',
+  successLight: '#dcfce7',
+  warning: '#f59e0b',
+  warningLight: '#fef3c7',
+  danger: '#ba1a1a',
+  dangerLight: '#ffdad6',
 
   // Risk level colors
-  riskLow: '#00E676',
-  riskModerate: '#FFD740',
-  riskHigh: '#FF6B6B',
-  riskCritical: '#FF1744',
+  riskLow: '#22c55e',
+  riskModerate: '#f59e0b',
+  riskHigh: '#ef4444',
+  riskCritical: '#ba1a1a',
 
   // Disease-specific colors
-  hypertension: '#FF6B6B',
-  hypertensionLight: 'rgba(255,107,107,0.15)',
-  diabetes: '#6C63FF',
-  diabetesLight: 'rgba(108,99,255,0.15)',
-  anemia: '#FFD740',
-  anemiaLight: 'rgba(255,215,64,0.15)',
+  hypertension: '#ef4444',
+  hypertensionLight: 'rgba(239,68,68,0.08)',
+  diabetes: '#006e2f',
+  diabetesLight: 'rgba(0,110,47,0.08)',
+  anemia: '#f59e0b',
+  anemiaLight: 'rgba(245,158,11,0.08)',
 
-  // Chart colors
-  chartLine: '#6C63FF',
-  chartFill: 'rgba(108,99,255,0.2)',
-  chartGrid: 'rgba(255,255,255,0.1)',
+  // Chart
+  chartLine: '#006e2f',
+  chartFill: 'rgba(0,110,47,0.1)',
+  chartGrid: 'rgba(0,0,0,0.04)',
 
   // Misc
   white: '#FFFFFF',
-  black: '#000000',
+  black: '#191c1d',
   transparent: 'transparent',
-  overlay: 'rgba(0,0,0,0.6)',
-  shimmer: 'rgba(255,255,255,0.05)',
+  overlay: 'rgba(25,28,29,0.4)',
+  shimmer: 'rgba(0,0,0,0.02)',
 };
 
 /**

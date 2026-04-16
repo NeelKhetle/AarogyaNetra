@@ -1,129 +1,284 @@
 /**
- * ArogyaNetra AI - Home Screen
- * Premium landing page with health overview and scan CTA
+ * AarogyaNetra AI — Home Screen
+ * Central action hub:
+ *  - Start Face Scan (primary CTA)
+ *  - Previous scan results summary
+ *  - Health trend tracking
+ *  - Quick access to features
  */
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useRef } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   ScrollView,
+  TouchableOpacity,
   Animated,
   Dimensions,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { GlassCard, AnimatedButton, RiskGauge } from '../components/common';
-import { Colors, Typography, Spacing, BorderRadius } from '../theme';
+import { Colors } from '../theme';
 import { useAppStore } from '../store/useAppStore';
-import type { HomeStackParamList } from '../models/types';
-
-const { width } = Dimensions.get('window');
+import type { HomeStackParamList, ScanHistoryEntry } from '../models/types';
 
 type NavProp = NativeStackNavigationProp<HomeStackParamList, 'Home'>;
 
-// ─── Animated Pulse Ring ──────────────────────────────
-const PulseRing: React.FC = () => {
-  const scale1 = React.useRef(new Animated.Value(1)).current;
-  const opacity1 = React.useRef(new Animated.Value(0.6)).current;
-  const scale2 = React.useRef(new Animated.Value(1)).current;
-  const opacity2 = React.useRef(new Animated.Value(0.4)).current;
+const { width } = Dimensions.get('window');
+
+// ─── Animated scan button ─────────────────────────────
+const PulseScanButton: React.FC<{ onPress: () => void }> = ({ onPress }) => {
+  const pulse1 = useRef(new Animated.Value(1)).current;
+  const pulse2 = useRef(new Animated.Value(1)).current;
+  const scale = useRef(new Animated.Value(1)).current;
 
   useEffect(() => {
-    const pulse1 = Animated.loop(
-      Animated.parallel([
-        Animated.timing(scale1, {
-          toValue: 2.2,
-          duration: 2000,
-          useNativeDriver: true,
-        }),
-        Animated.timing(opacity1, {
-          toValue: 0,
-          duration: 2000,
-          useNativeDriver: true,
-        }),
+    const anim1 = Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulse1, { toValue: 1.35, duration: 1800, useNativeDriver: true }),
+        Animated.timing(pulse1, { toValue: 1, duration: 1800, useNativeDriver: true }),
       ])
     );
-
-    const pulse2 = Animated.loop(
-      Animated.parallel([
-        Animated.timing(scale2, {
-          toValue: 2.5,
-          duration: 2500,
-          useNativeDriver: true,
-        }),
-        Animated.timing(opacity2, {
-          toValue: 0,
-          duration: 2500,
-          useNativeDriver: true,
-        }),
+    const anim2 = Animated.loop(
+      Animated.sequence([
+        Animated.delay(600),
+        Animated.timing(pulse2, { toValue: 1.55, duration: 1800, useNativeDriver: true }),
+        Animated.timing(pulse2, { toValue: 1, duration: 1800, useNativeDriver: true }),
       ])
     );
-
-    pulse1.start();
-    setTimeout(() => pulse2.start(), 500);
-
-    return () => {
-      pulse1.stop();
-      pulse2.stop();
-    };
+    anim1.start();
+    anim2.start();
+    return () => { anim1.stop(); anim2.stop(); };
   }, []);
 
+  const pressIn = () => Animated.spring(scale, { toValue: 0.94, useNativeDriver: true }).start();
+  const pressOut = () => Animated.spring(scale, { toValue: 1, useNativeDriver: true }).start();
+
   return (
-    <View style={styles.pulseContainer}>
-      <Animated.View
-        style={[
-          styles.pulseRing,
-          { transform: [{ scale: scale1 }], opacity: opacity1 },
-        ]}
-      />
-      <Animated.View
-        style={[
-          styles.pulseRing,
-          styles.pulseRing2,
-          { transform: [{ scale: scale2 }], opacity: opacity2 },
-        ]}
-      />
+    <View style={scanBtnStyles.wrapper}>
+      {/* Ripple rings */}
+      <Animated.View style={[scanBtnStyles.ring, { transform: [{ scale: pulse2 }], opacity: pulse2.interpolate({ inputRange: [1, 1.55], outputRange: [0.2, 0] }) }]} />
+      <Animated.View style={[scanBtnStyles.ring, { transform: [{ scale: pulse1 }], opacity: pulse1.interpolate({ inputRange: [1, 1.35], outputRange: [0.3, 0] }) }]} />
+
+      {/* Main button */}
+      <Animated.View style={{ transform: [{ scale }] }}>
+        <TouchableOpacity
+          style={scanBtnStyles.btn}
+          onPress={onPress}
+          onPressIn={pressIn}
+          onPressOut={pressOut}
+          activeOpacity={1}
+        >
+          <Text style={scanBtnStyles.cameraIcon}>📷</Text>
+          <Text style={scanBtnStyles.label}>Start Face Scan</Text>
+          <Text style={scanBtnStyles.sublabel}>Tap to begin health screening</Text>
+        </TouchableOpacity>
+      </Animated.View>
     </View>
   );
 };
 
-// ─── Feature Card ──────────────────────────────────────
-const FeatureCard: React.FC<{
-  icon: string;
-  title: string;
-  description: string;
-  color: string;
-}> = ({ icon, title, description, color }) => (
-  <GlassCard style={styles.featureCard}>
-    <View style={[styles.featureIcon, { backgroundColor: `${color}15` }]}>
-      <Text style={styles.featureEmoji}>{icon}</Text>
-    </View>
-    <Text style={styles.featureTitle}>{title}</Text>
-    <Text style={styles.featureDesc}>{description}</Text>
-  </GlassCard>
-);
+const scanBtnStyles = StyleSheet.create({
+  wrapper: { alignItems: 'center', justifyContent: 'center', height: 200, marginVertical: 8 },
+  ring: {
+    position: 'absolute',
+    width: 160,
+    height: 160,
+    borderRadius: 80,
+    borderWidth: 2,
+    borderColor: Colors.primary,
+  },
+  btn: {
+    width: 150,
+    height: 150,
+    borderRadius: 75,
+    backgroundColor: Colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+    elevation: 10,
+    shadowColor: '#006e2f',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.35,
+    shadowRadius: 20,
+  },
+  cameraIcon: { fontSize: 40, marginBottom: 4 },
+  label: { fontSize: 14, fontWeight: '800', color: '#fff', letterSpacing: 0.2 },
+  sublabel: { fontSize: 10, color: 'rgba(255,255,255,0.75)', marginTop: 2 },
+});
 
-// ─── Home Screen ───────────────────────────────────────
+// ─── Risk bar ─────────────────────────────────────────
+const RiskBar: React.FC<{ label: string; value: number; color: string; icon: string }> = ({ label, value, color, icon }) => {
+  const animWidth = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    Animated.timing(animWidth, { toValue: value, duration: 900, useNativeDriver: false, delay: 300 }).start();
+  }, [value]);
+
+  const pct = Math.round(value * 100);
+  const level = pct < 30 ? 'Low' : pct < 60 ? 'Moderate' : 'High';
+  const lvlColor = pct < 30 ? Colors.success : pct < 60 ? Colors.warning : Colors.danger;
+
+  return (
+    <View style={riskBarStyles.row}>
+      <Text style={riskBarStyles.icon}>{icon}</Text>
+      <View style={{ flex: 1 }}>
+        <View style={riskBarStyles.labelRow}>
+          <Text style={riskBarStyles.label}>{label}</Text>
+          <Text style={[riskBarStyles.level, { color: lvlColor }]}>{level} · {pct}%</Text>
+        </View>
+        <View style={riskBarStyles.track}>
+          <Animated.View
+            style={[
+              riskBarStyles.fill,
+              {
+                backgroundColor: color,
+                width: animWidth.interpolate({ inputRange: [0, 1], outputRange: ['0%', '100%'] }),
+              },
+            ]}
+          />
+        </View>
+      </View>
+    </View>
+  );
+};
+
+const riskBarStyles = StyleSheet.create({
+  row: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 12 },
+  icon: { fontSize: 18, width: 24 },
+  labelRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 5 },
+  label: { fontSize: 13, fontWeight: '600', color: Colors.textPrimary },
+  level: { fontSize: 11, fontWeight: '700' },
+  track: { height: 7, backgroundColor: Colors.surfaceContainerLow, borderRadius: 4, overflow: 'hidden' },
+  fill: { height: 7, borderRadius: 4 },
+});
+
+// ─── Score Ring ───────────────────────────────────────
+const ScoreRing: React.FC<{ score: number }> = ({ score }) => {
+  const color = score >= 70 ? Colors.success : score >= 45 ? Colors.warning : Colors.danger;
+  const label = score >= 70 ? 'Good' : score >= 45 ? 'Fair' : 'At Risk';
+
+  return (
+    <View style={ringStyles.container}>
+      <View style={[ringStyles.outer, { borderColor: `${color}30` }]}>
+        <View style={[ringStyles.inner, { borderColor: color }]}>
+          <Text style={[ringStyles.score, { color }]}>{score}</Text>
+          <Text style={ringStyles.outOf}>/100</Text>
+        </View>
+      </View>
+      <Text style={[ringStyles.label, { color }]}>{label}</Text>
+    </View>
+  );
+};
+
+const ringStyles = StyleSheet.create({
+  container: { alignItems: 'center' },
+  outer: { width: 88, height: 88, borderRadius: 44, borderWidth: 3, alignItems: 'center', justifyContent: 'center' },
+  inner: { width: 72, height: 72, borderRadius: 36, borderWidth: 2.5, alignItems: 'center', justifyContent: 'center' },
+  score: { fontSize: 22, fontWeight: '800' },
+  outOf: { fontSize: 10, color: Colors.textTertiary, marginTop: -2 },
+  label: { fontSize: 11, fontWeight: '700', marginTop: 5 },
+});
+
+// ─── Quick Action Card ────────────────────────────────
+const QuickCard: React.FC<{ icon: string; label: string; desc: string; onPress: () => void; color?: string }> = ({ icon, label, desc, onPress, color = Colors.surfaceContainerLow }) => {
+  const scale = useRef(new Animated.Value(1)).current;
+  const pressIn = () => Animated.spring(scale, { toValue: 0.95, useNativeDriver: true }).start();
+  const pressOut = () => Animated.spring(scale, { toValue: 1, useNativeDriver: true }).start();
+
+  return (
+    <Animated.View style={[quickStyles.card, { transform: [{ scale }], backgroundColor: color }]}>
+      <TouchableOpacity onPress={onPress} onPressIn={pressIn} onPressOut={pressOut} activeOpacity={1}>
+        <Text style={quickStyles.icon}>{icon}</Text>
+        <Text style={quickStyles.label}>{label}</Text>
+        <Text style={quickStyles.desc}>{desc}</Text>
+      </TouchableOpacity>
+    </Animated.View>
+  );
+};
+
+const quickStyles = StyleSheet.create({
+  card: { width: (width - 56) / 2, borderRadius: 18, padding: 18, marginBottom: 12, borderWidth: 1, borderColor: Colors.surfaceBorder },
+  icon: { fontSize: 28, marginBottom: 8 },
+  label: { fontSize: 14, fontWeight: '700', color: Colors.textPrimary, marginBottom: 3 },
+  desc: { fontSize: 11, color: Colors.textTertiary, lineHeight: 17 },
+});
+
+// ─── Mini trend chart ─────────────────────────────────
+const TrendChart: React.FC<{ history: ScanHistoryEntry[] }> = ({ history }) => {
+  if (history.length < 2) return null;
+  const last5 = history.slice(0, 5).reverse();
+  const maxScore = 100;
+
+  return (
+    <View style={trendStyles.container}>
+      <View style={trendStyles.bars}>
+        {last5.map((entry, i) => {
+          const h = Math.max(8, (entry.overallScore / maxScore) * 60);
+          const color = entry.overallScore >= 70 ? Colors.success : entry.overallScore >= 45 ? Colors.warning : Colors.danger;
+          return (
+            <View key={i} style={trendStyles.barWrap}>
+              <Text style={trendStyles.barValue}>{entry.overallScore}</Text>
+              <View style={[trendStyles.bar, { height: h, backgroundColor: color }]} />
+              <Text style={trendStyles.barDate}>
+                {new Date(entry.timestamp).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
+              </Text>
+            </View>
+          );
+        })}
+      </View>
+
+      {/* Trend direction */}
+      {last5.length >= 2 && (() => {
+        const latest = last5[last5.length - 1].overallScore;
+        const prev = last5[last5.length - 2].overallScore;
+        const diff = latest - prev;
+        const up = diff > 0;
+        return (
+          <View style={trendStyles.trendNote}>
+            <Text style={[trendStyles.trendArrow, { color: up ? Colors.success : Colors.danger }]}>
+              {up ? '↗' : '↘'}
+            </Text>
+            <Text style={trendStyles.trendText}>
+              {up ? `+${diff}` : diff} points since last scan
+            </Text>
+          </View>
+        );
+      })()}
+    </View>
+  );
+};
+
+const trendStyles = StyleSheet.create({
+  container: { paddingTop: 8 },
+  bars: { flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-around', height: 90 },
+  barWrap: { alignItems: 'center', gap: 4 },
+  barValue: { fontSize: 10, fontWeight: '700', color: Colors.textTertiary },
+  bar: { width: 28, borderRadius: 6 },
+  barDate: { fontSize: 9, color: Colors.textTertiary },
+  trendNote: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 10, justifyContent: 'center' },
+  trendArrow: { fontSize: 18, fontWeight: '800' },
+  trendText: { fontSize: 13, color: Colors.textSecondary, fontWeight: '500' },
+});
+
+// ─── Main Screen ──────────────────────────────────────
 export const HomeScreen: React.FC = () => {
   const navigation = useNavigation<NavProp>();
-  const { user, currentScan, scanHistory, initializeDefaultUser } = useAppStore();
+  const { user, scanHistory, currentScan, initializeDefaultUser } = useAppStore();
+
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const slideY = useRef(new Animated.Value(20)).current;
 
   useEffect(() => {
     initializeDefaultUser();
+    Animated.parallel([
+      Animated.timing(fadeAnim, { toValue: 1, duration: 600, useNativeDriver: true }),
+      Animated.timing(slideY, { toValue: 0, duration: 500, useNativeDriver: true }),
+    ]).start();
   }, []);
 
   const lastScan = scanHistory[0];
-  const fadeAnim = React.useRef(new Animated.Value(0)).current;
-
-  useEffect(() => {
-    Animated.timing(fadeAnim, {
-      toValue: 1,
-      duration: 800,
-      useNativeDriver: true,
-    }).start();
-  }, []);
+  const greetingHour = new Date().getHours();
+  const greeting = greetingHour < 12 ? 'Good Morning' : greetingHour < 17 ? 'Good Afternoon' : 'Good Evening';
 
   return (
     <ScrollView
@@ -131,348 +286,254 @@ export const HomeScreen: React.FC = () => {
       contentContainerStyle={styles.content}
       showsVerticalScrollIndicator={false}
     >
-      <Animated.View style={{ opacity: fadeAnim }}>
-        {/* Hero Section */}
-        <View style={styles.hero}>
-          <View style={styles.heroGlow} />
-          <PulseRing />
+      <Animated.View style={{ opacity: fadeAnim, transform: [{ translateY: slideY }] }}>
 
-          <View style={styles.heroContent}>
-            <Text style={styles.appName}>🏥 AarogyaNetra</Text>
-            <Text style={styles.tagline}>AI Health Screening</Text>
-            <Text style={styles.subtitle}>
-              Zero Hardware. Zero Needles.{'\n'}Complete Health Screening.
-            </Text>
+        {/* ── Header ── */}
+        <View style={styles.header}>
+          <View>
+            <Text style={styles.greeting}>{greeting} 👋</Text>
+            <Text style={styles.userName}>{user?.name || 'Welcome'}</Text>
+          </View>
+          <View style={styles.headerRight}>
+            {scanHistory.length > 0 && (
+              <View style={styles.scanCountBadge}>
+                <Text style={styles.scanCountText}>{scanHistory.length} scans</Text>
+              </View>
+            )}
           </View>
         </View>
 
-        {/* Quick Health Overview (if previous scan exists) */}
-        {lastScan && (
-          <GlassCard variant="accent" style={styles.overviewCard}>
-            <Text style={styles.sectionTitle}>Last Scan Overview</Text>
-            <View style={styles.overviewRow}>
-              <View style={styles.overviewGauge}>
-                <RiskGauge
-                  score={lastScan.overallScore}
-                  size={100}
-                  strokeWidth={10}
-                  label="Health"
-                  color={
-                    lastScan.overallScore >= 70 ? Colors.success :
-                    lastScan.overallScore >= 50 ? Colors.warning : Colors.danger
-                  }
-                />
+        {/* ── Primary CTA — Face Scan ── */}
+        <View style={styles.scanSection}>
+          <PulseScanButton onPress={() => navigation.navigate('Scanner', { cameraMode: 'normal' })} />
+          <Text style={styles.scanHint}>
+            Align your face, hold steady · AI analyses in ~15 seconds
+          </Text>
+
+          {/* Eye scan shortcut */}
+          <TouchableOpacity
+            style={styles.eyeScanChip}
+            onPress={() => navigation.navigate('Scanner', { cameraMode: 'normal' })}
+            activeOpacity={0.8}
+          >
+            <Text style={styles.eyeScanIcon}>👁️</Text>
+            <Text style={styles.eyeScanLabel}>Eye Scan (Anemia Detection)</Text>
+            <Text style={styles.eyeScanArrow}>→</Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* ── What We Detect ── */}
+        <View style={styles.detectRow}>
+          {[
+            { icon: '❤️', label: 'Hypertension', color: '#ef4444' },
+            { icon: '🩸', label: 'Diabetes', color: '#006e2f' },
+            { icon: '👁️', label: 'Anemia', color: '#f59e0b' },
+          ].map((d, i) => (
+            <View key={i} style={[styles.detectChip, { backgroundColor: `${d.color}10` }]}>
+              <Text>{d.icon}</Text>
+              <Text style={[styles.detectLabel, { color: d.color }]}>{d.label}</Text>
+            </View>
+          ))}
+        </View>
+
+        {/* ── Last Scan Summary ── */}
+        {lastScan ? (
+          <View style={styles.section}>
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionTitle}>Last Scan Results</Text>
+              <TouchableOpacity
+                onPress={() => navigation.navigate('Results', { scanId: lastScan.scanId })}
+                activeOpacity={0.7}
+              >
+                <Text style={styles.seeAll}>View Report →</Text>
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.lastScanCard}>
+              {/* Score ring + risks */}
+              <View style={styles.lastScanTop}>
+                <ScoreRing score={lastScan.overallScore} />
+                <View style={{ flex: 1, marginLeft: 20 }}>
+                  <RiskBar label="Hypertension" value={lastScan.hypertensionRisk} color="#ef4444" icon="❤️" />
+                  <RiskBar label="Diabetes" value={lastScan.diabetesRisk} color="#006e2f" icon="🩸" />
+                  <RiskBar label="Anemia" value={lastScan.anemiaRisk} color="#f59e0b" icon="👁️" />
+                </View>
               </View>
-              <View style={styles.overviewMini}>
-                <View style={styles.miniRow}>
-                  <View style={[styles.miniDot, { backgroundColor: Colors.hypertension }]} />
-                  <Text style={styles.miniLabel}>Hypertension</Text>
-                  <Text style={styles.miniValue}>
-                    {Math.round(lastScan.hypertensionRisk * 100)}%
-                  </Text>
-                </View>
-                <View style={styles.miniRow}>
-                  <View style={[styles.miniDot, { backgroundColor: Colors.diabetes }]} />
-                  <Text style={styles.miniLabel}>Diabetes</Text>
-                  <Text style={styles.miniValue}>
-                    {Math.round(lastScan.diabetesRisk * 100)}%
-                  </Text>
-                </View>
-                <View style={styles.miniRow}>
-                  <View style={[styles.miniDot, { backgroundColor: Colors.anemia }]} />
-                  <Text style={styles.miniLabel}>Anemia</Text>
-                  <Text style={styles.miniValue}>
-                    {Math.round(lastScan.anemiaRisk * 100)}%
-                  </Text>
-                </View>
+
+              <View style={styles.scanMeta}>
+                <Text style={styles.scanMetaText}>
+                  🕐 {new Date(lastScan.timestamp).toLocaleDateString('en-IN', {
+                    weekday: 'short', day: 'numeric', month: 'short',
+                    hour: '2-digit', minute: '2-digit',
+                  })}
+                </Text>
+                <TouchableOpacity
+                  style={styles.rescanBtn}
+                  onPress={() => navigation.navigate('Scanner', { cameraMode: 'normal' })}
+                  activeOpacity={0.8}
+                >
+                  <Text style={styles.rescanText}>↻ Rescan</Text>
+                </TouchableOpacity>
               </View>
             </View>
-          </GlassCard>
+          </View>
+        ) : (
+          <View style={styles.noScanCard}>
+            <Text style={{ fontSize: 36, marginBottom: 8 }}>🔍</Text>
+            <Text style={styles.noScanTitle}>No scans yet</Text>
+            <Text style={styles.noScanDesc}>Tap "Start Face Scan" above to begin your first health screening.</Text>
+          </View>
         )}
 
-        {/* Start Scan CTA */}
-        <View style={styles.ctaContainer}>
-          <AnimatedButton
-            title="🔬  Start Health Scan"
-            onPress={() => navigation.navigate('Scanner')}
-            variant="primary"
-            size="large"
-            fullWidth
-            style={styles.ctaButton}
-          />
-          <Text style={styles.ctaHint}>
-            Takes ~30 seconds • Works offline
-          </Text>
+        {/* ── Health Progress / Trend ── */}
+        {scanHistory.length >= 2 && (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Health Trend</Text>
+            <View style={styles.trendCard}>
+              <TrendChart history={scanHistory} />
+            </View>
+          </View>
+        )}
+
+        {/* ── Quick Actions ── */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Quick Access</Text>
+          <View style={styles.quickGrid}>
+            <QuickCard
+              icon="📊"
+              label="Health History"
+              desc="View all past scans"
+              onPress={() => navigation.navigate('Results', { scanId: lastScan?.scanId || '' })}
+              color="#f0faf3"
+            />
+            <QuickCard
+              icon="🤖"
+              label="AI Health Chat"
+              desc="Ask health questions"
+              onPress={() => navigation.navigate('Chatbot')}
+              color="#f0f4ff"
+            />
+            <QuickCard
+              icon="🍽️"
+              label="Diet Plan"
+              desc="Personalised meal guide"
+              onPress={() => lastScan
+                ? navigation.navigate('Diet', { scanId: lastScan.scanId })
+                : navigation.navigate('Scanner', { cameraMode: 'normal' })
+              }
+              color="#fffbf0"
+            />
+            <QuickCard
+              icon="📈"
+              label="Risk Forecast"
+              desc="6-12 month trajectory"
+              onPress={() => lastScan
+                ? navigation.navigate('DREM', { scanId: lastScan.scanId })
+                : navigation.navigate('Scanner', { cameraMode: 'normal' })
+              }
+              color="#fff0f0"
+            />
+          </View>
         </View>
 
-        {/* Disease Cards */}
-        <Text style={styles.sectionTitle}>What We Screen</Text>
-        <View style={styles.diseaseGrid}>
-          <GlassCard style={styles.diseaseCard}>
-            <Text style={styles.diseaseEmoji}>❤️</Text>
-            <Text style={[styles.diseaseName, { color: Colors.hypertension }]}>
-              Hypertension
-            </Text>
-            <Text style={styles.diseaseDesc}>
-              Blood pressure & cardiovascular risk via rPPG pulse analysis
-            </Text>
-          </GlassCard>
-
-          <GlassCard style={styles.diseaseCard}>
-            <Text style={styles.diseaseEmoji}>🩸</Text>
-            <Text style={[styles.diseaseName, { color: Colors.diabetes }]}>
-              Diabetes
-            </Text>
-            <Text style={styles.diseaseDesc}>
-              HbA1c & glucose proxy through HRV depression index
-            </Text>
-          </GlassCard>
-
-          <GlassCard style={styles.diseaseCard}>
-            <Text style={styles.diseaseEmoji}>👁️</Text>
-            <Text style={[styles.diseaseName, { color: Colors.anemia }]}>
-              Anemia
-            </Text>
-            <Text style={styles.diseaseDesc}>
-              Hemoglobin estimation via conjunctival pallor analysis
-            </Text>
-          </GlassCard>
+        {/* ── How It Works ── */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>How It Works</Text>
+          <View style={styles.stepsCard}>
+            {[
+              { step: '1', icon: '📷', title: 'Face Scan', desc: 'Align face in frame — camera captures rPPG signals & eye pallor' },
+              { step: '2', icon: '💬', title: 'Answer Questions', desc: 'Share lifestyle details — sleep, diet, activity, symptoms' },
+              { step: '3', icon: '🧠', title: 'AI Analysis', desc: 'On-device AI fuses all inputs to generate risk scores' },
+              { step: '4', icon: '📋', title: 'Get Your Report', desc: 'Receive risk levels, diet plan, and doctor recommendations' },
+            ].map((s, i) => (
+              <View key={i} style={[styles.step, i < 3 && styles.stepBorder]}>
+                <View style={styles.stepNum}>
+                  <Text style={styles.stepNumText}>{s.step}</Text>
+                </View>
+                <Text style={styles.stepIcon}>{s.icon}</Text>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.stepTitle}>{s.title}</Text>
+                  <Text style={styles.stepDesc}>{s.desc}</Text>
+                </View>
+              </View>
+            ))}
+          </View>
         </View>
 
-        {/* Feature Highlights */}
-        <Text style={styles.sectionTitle}>Powered By</Text>
-        <View style={styles.featureGrid}>
-          <FeatureCard
-            icon="📊"
-            title="DREM"
-            description="6-12 month risk trajectory prediction"
-            color={Colors.primary}
-          />
-          <FeatureCard
-            icon="🧠"
-            title="ARE"
-            description="Explainable AI with clinical reasoning"
-            color={Colors.secondary}
-          />
-          <FeatureCard
-            icon="🔄"
-            title="What-If"
-            description="Lifestyle simulation engine"
-            color={Colors.accent}
-          />
-          <FeatureCard
-            icon="📱"
-            title="Offline"
-            description="Works with zero network"
-            color={Colors.success}
-          />
-        </View>
-
-        {/* Footer */}
+        {/* ── Footer ── */}
         <View style={styles.footer}>
-          <Text style={styles.footerText}>
-            ⚠️ Screening tool only — not a medical diagnosis
-          </Text>
-          <Text style={styles.footerVersion}>v1.0.0 • AarogyaNetra AI</Text>
+          <Text style={styles.footerText}>⚠️ Screening tool only – not a medical diagnosis</Text>
+          <Text style={styles.footerVersion}>AarogyaNetra AI v1.0 · Made in India 🇮🇳 · 100% Offline</Text>
         </View>
+
       </Animated.View>
     </ScrollView>
   );
 };
 
-// ─── Styles ────────────────────────────────────────────
+// ─── Styles ───────────────────────────────────────────
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: Colors.background,
-  },
-  content: {
-    paddingBottom: 100,
-  },
-  // Hero
-  hero: {
-    alignItems: 'center',
-    paddingTop: 40,
-    paddingBottom: 20,
-    overflow: 'hidden',
-  },
-  heroGlow: {
-    position: 'absolute',
-    top: -60,
-    width: 300,
-    height: 300,
-    borderRadius: 150,
-    backgroundColor: Colors.primary,
-    opacity: 0.06,
-  },
-  heroContent: {
-    alignItems: 'center',
-    zIndex: 2,
-  },
-  appName: {
-    ...Typography.h1,
-    color: Colors.textPrimary,
-    fontSize: 34,
-    marginBottom: 4,
-  },
-  tagline: {
-    ...Typography.h3,
-    color: Colors.primary,
-    marginBottom: Spacing.sm,
-  },
-  subtitle: {
-    ...Typography.body,
-    color: Colors.textSecondary,
-    textAlign: 'center',
-    lineHeight: 22,
-  },
-  pulseContainer: {
-    position: 'absolute',
-    top: 30,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  pulseRing: {
-    position: 'absolute',
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    borderWidth: 2,
-    borderColor: Colors.primary,
-  },
-  pulseRing2: {
-    borderColor: Colors.secondary,
-  },
-  // Overview
-  overviewCard: {
-    marginHorizontal: Spacing.lg,
-    marginTop: Spacing.lg,
-  },
-  overviewRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: Spacing.md,
-  },
-  overviewGauge: {
-    marginRight: Spacing.xl,
-  },
-  overviewMini: {
-    flex: 1,
-    gap: Spacing.sm,
-  },
-  miniRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  miniDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    marginRight: Spacing.sm,
-  },
-  miniLabel: {
-    ...Typography.bodySmall,
-    color: Colors.textSecondary,
-    flex: 1,
-  },
-  miniValue: {
-    ...Typography.label,
-    color: Colors.textPrimary,
-  },
-  // CTA
-  ctaContainer: {
-    paddingHorizontal: Spacing.lg,
-    marginTop: Spacing.xxl,
-    alignItems: 'center',
-  },
-  ctaButton: {
-    paddingVertical: 18,
-    borderRadius: BorderRadius.xl,
-  },
-  ctaHint: {
-    ...Typography.caption,
-    color: Colors.textTertiary,
-    marginTop: Spacing.sm,
-  },
+  container: { flex: 1, backgroundColor: Colors.background },
+  content: { paddingBottom: 100 },
+
+  // Header
+  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', paddingHorizontal: 24, paddingTop: 52, paddingBottom: 4 },
+  greeting: { fontSize: 13, color: Colors.textTertiary, fontWeight: '500' },
+  userName: { fontSize: 26, fontWeight: '800', color: Colors.textPrimary, letterSpacing: -0.5 },
+  headerRight: { alignItems: 'flex-end', paddingTop: 20 },
+  scanCountBadge: { backgroundColor: 'rgba(0,110,47,0.1)', borderRadius: 999, paddingHorizontal: 12, paddingVertical: 5 },
+  scanCountText: { fontSize: 12, fontWeight: '700', color: Colors.primary },
+
+  // Scan section
+  scanSection: { alignItems: 'center', paddingHorizontal: 24, marginTop: 16 },
+  scanHint: { fontSize: 12, color: Colors.textTertiary, textAlign: 'center', marginTop: 4, lineHeight: 17 },
+  eyeScanChip: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: '#fff', borderRadius: 999, paddingHorizontal: 18, paddingVertical: 11, marginTop: 14, borderWidth: 1, borderColor: Colors.surfaceBorder, elevation: 1, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.04, shadowRadius: 6 },
+  eyeScanIcon: { fontSize: 18 },
+  eyeScanLabel: { flex: 1, fontSize: 13, fontWeight: '600', color: Colors.textSecondary },
+  eyeScanArrow: { fontSize: 14, color: Colors.primary, fontWeight: '800' },
+
+  // Detect chips
+  detectRow: { flexDirection: 'row', gap: 8, paddingHorizontal: 24, marginTop: 20, justifyContent: 'center' },
+  detectChip: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 5, borderRadius: 999, paddingHorizontal: 10, paddingVertical: 8, justifyContent: 'center' },
+  detectLabel: { fontSize: 11, fontWeight: '700' },
+
   // Section
-  sectionTitle: {
-    ...Typography.h3,
-    color: Colors.textPrimary,
-    marginTop: Spacing.xxxl,
-    marginBottom: Spacing.lg,
-    paddingHorizontal: Spacing.lg,
-  },
-  // Disease grid
-  diseaseGrid: {
-    paddingHorizontal: Spacing.lg,
-    gap: Spacing.md,
-  },
-  diseaseCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: Spacing.lg,
-  },
-  diseaseEmoji: {
-    fontSize: 28,
-    marginRight: Spacing.lg,
-  },
-  diseaseName: {
-    ...Typography.label,
-    fontSize: 15,
-    marginBottom: 2,
-  },
-  diseaseDesc: {
-    ...Typography.bodySmall,
-    color: Colors.textTertiary,
-    flex: 1,
-  },
-  // Feature grid
-  featureGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    paddingHorizontal: Spacing.md,
-    gap: Spacing.sm,
-  },
-  featureCard: {
-    width: (width - Spacing.md * 2 - Spacing.sm) / 2 - Spacing.sm,
-    alignItems: 'center',
-    paddingVertical: Spacing.lg,
-  },
-  featureIcon: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: Spacing.sm,
-  },
-  featureEmoji: {
-    fontSize: 20,
-  },
-  featureTitle: {
-    ...Typography.label,
-    color: Colors.textPrimary,
-    marginBottom: 2,
-  },
-  featureDesc: {
-    ...Typography.caption,
-    color: Colors.textTertiary,
-    textAlign: 'center',
-  },
+  section: { paddingHorizontal: 24, marginTop: 28 },
+  sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 },
+  sectionTitle: { fontSize: 16, fontWeight: '800', color: Colors.textPrimary },
+  seeAll: { fontSize: 13, fontWeight: '600', color: Colors.primary },
+
+  // Last scan card
+  lastScanCard: { backgroundColor: '#fff', borderRadius: 22, padding: 20, borderWidth: 1, borderColor: Colors.surfaceBorder, elevation: 2, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.06, shadowRadius: 12 },
+  lastScanTop: { flexDirection: 'row', alignItems: 'flex-start', marginBottom: 14 },
+  scanMeta: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingTop: 12, borderTopWidth: 1, borderTopColor: Colors.surfaceBorder },
+  scanMetaText: { fontSize: 11, color: Colors.textTertiary },
+  rescanBtn: { backgroundColor: Colors.primary, borderRadius: 999, paddingHorizontal: 14, paddingVertical: 6 },
+  rescanText: { fontSize: 12, fontWeight: '700', color: '#fff' },
+
+  // No scan
+  noScanCard: { marginHorizontal: 0, backgroundColor: Colors.surfaceContainerLow, borderRadius: 22, padding: 28, alignItems: 'center', borderWidth: 1, borderColor: Colors.surfaceBorder },
+  noScanTitle: { fontSize: 16, fontWeight: '700', color: Colors.textPrimary, marginBottom: 6 },
+  noScanDesc: { fontSize: 13, color: Colors.textSecondary, textAlign: 'center', lineHeight: 19 },
+
+  // Trend card
+  trendCard: { backgroundColor: '#fff', borderRadius: 20, padding: 18, borderWidth: 1, borderColor: Colors.surfaceBorder },
+
+  // Quick grid
+  quickGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, justifyContent: 'space-between' },
+
+  // Steps card
+  stepsCard: { backgroundColor: '#fff', borderRadius: 20, padding: 18, borderWidth: 1, borderColor: Colors.surfaceBorder },
+  step: { flexDirection: 'row', alignItems: 'flex-start', gap: 12, paddingVertical: 14 },
+  stepBorder: { borderBottomWidth: 1, borderBottomColor: Colors.surfaceBorder },
+  stepNum: { width: 26, height: 26, borderRadius: 13, backgroundColor: Colors.primary, alignItems: 'center', justifyContent: 'center', marginTop: 1 },
+  stepNumText: { fontSize: 12, fontWeight: '800', color: '#fff' },
+  stepIcon: { fontSize: 20, marginTop: 1 },
+  stepTitle: { fontSize: 14, fontWeight: '700', color: Colors.textPrimary, marginBottom: 2 },
+  stepDesc: { fontSize: 12, color: Colors.textTertiary, lineHeight: 17 },
+
   // Footer
-  footer: {
-    alignItems: 'center',
-    marginTop: Spacing.huge,
-    paddingHorizontal: Spacing.lg,
-  },
-  footerText: {
-    ...Typography.bodySmall,
-    color: Colors.warning,
-    textAlign: 'center',
-    marginBottom: Spacing.sm,
-  },
-  footerVersion: {
-    ...Typography.caption,
-    color: Colors.textTertiary,
-  },
+  footer: { alignItems: 'center', paddingTop: 28, paddingHorizontal: 24, gap: 4 },
+  footerText: { fontSize: 11, color: Colors.textTertiary, textAlign: 'center' },
+  footerVersion: { fontSize: 10, color: Colors.textTertiary },
 });

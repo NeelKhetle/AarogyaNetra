@@ -1,48 +1,24 @@
 /**
- * ArogyaNetra AI - Simple Storage Module
- * File-based persistence using React Native's built-in capabilities
- * No external packages needed — works on all React Native versions.
+ * AarogyaNetra AI - Simple Storage Module
+ * Persistent storage using @react-native-async-storage/async-storage.
+ * All data is saved to device storage and survives app restarts.
  *
- * Uses a global in-memory cache with periodic save via a hidden state file.
- * On Hermes/release builds, we use a simple key-value approach.
+ * Falls back to in-memory cache if native storage is unavailable.
  */
 
-// In-memory cache that persists across the app session
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
+// In-memory cache for fast reads within the session
 const memoryStore: Record<string, string> = {};
-
-// Flag to track if we've loaded from native storage
-let nativeStorageAvailable = false;
-let nativeStorage: any = null;
-
-// Try to load native AsyncStorage if available
-try {
-  // Try community package
-  nativeStorage = require('@react-native-async-storage/async-storage')?.default;
-  if (nativeStorage) nativeStorageAvailable = true;
-} catch {
-  try {
-    // Try built-in (older RN versions)
-    const RN = require('react-native');
-    if (RN.AsyncStorage) {
-      nativeStorage = RN.AsyncStorage;
-      nativeStorageAvailable = true;
-    }
-  } catch {
-    // No native storage available — use memory only
-    nativeStorageAvailable = false;
-  }
-}
 
 export const SimpleStorage = {
   async setItem(key: string, value: string): Promise<void> {
     memoryStore[key] = value;
-    if (nativeStorageAvailable && nativeStorage) {
-      try {
-        await nativeStorage.setItem(key, value);
-      } catch (e) {
-        // Silently fail — data is still in memory for this session
-        console.warn('[Storage] Native save failed:', key);
-      }
+    try {
+      await AsyncStorage.setItem(key, value);
+    } catch (e) {
+      // Data is still in memory for this session
+      console.warn('[Storage] Save failed:', key, e);
     }
   },
 
@@ -52,17 +28,15 @@ export const SimpleStorage = {
       return memoryStore[key];
     }
 
-    // Try native storage
-    if (nativeStorageAvailable && nativeStorage) {
-      try {
-        const value = await nativeStorage.getItem(key);
-        if (value !== null) {
-          memoryStore[key] = value; // Cache it
-        }
-        return value;
-      } catch (e) {
-        console.warn('[Storage] Native load failed:', key);
+    // Try persistent storage
+    try {
+      const value = await AsyncStorage.getItem(key);
+      if (value !== null) {
+        memoryStore[key] = value; // Cache it
       }
+      return value;
+    } catch (e) {
+      console.warn('[Storage] Load failed:', key, e);
     }
 
     return null;
@@ -70,12 +44,10 @@ export const SimpleStorage = {
 
   async removeItem(key: string): Promise<void> {
     delete memoryStore[key];
-    if (nativeStorageAvailable && nativeStorage) {
-      try {
-        await nativeStorage.removeItem(key);
-      } catch (e) {
-        // Silent
-      }
+    try {
+      await AsyncStorage.removeItem(key);
+    } catch (e) {
+      // Silent
     }
   },
 
@@ -96,6 +68,26 @@ export const SimpleStorage = {
     } catch (e) {
       console.warn('[Storage] JSON parse failed:', key);
       return null;
+    }
+  },
+
+  // Get all keys (useful for debugging)
+  async getAllKeys(): Promise<string[]> {
+    try {
+      const keys = await AsyncStorage.getAllKeys();
+      return keys as string[];
+    } catch (e) {
+      return Object.keys(memoryStore);
+    }
+  },
+
+  // Clear all stored data
+  async clear(): Promise<void> {
+    Object.keys(memoryStore).forEach(key => delete memoryStore[key]);
+    try {
+      await AsyncStorage.clear();
+    } catch (e) {
+      console.warn('[Storage] Clear failed:', e);
     }
   },
 };

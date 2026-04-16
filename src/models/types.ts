@@ -3,6 +3,59 @@
  * TypeScript types for all medical data structures
  */
 
+// ─── Camera Modes ────────────────────────────────────
+export type CameraMode = 'normal' | 'night_vision' | 'thermal';
+
+export interface CameraModeInfo {
+  mode: CameraMode;
+  label: string;
+  icon: string;
+  description: string;
+  color: string;
+}
+
+export const CAMERA_MODES: CameraModeInfo[] = [
+  {
+    mode: 'normal',
+    label: 'Normal',
+    icon: '📷',
+    description: 'Standard rPPG face scan with eye analysis',
+    color: '#6C63FF',
+  },
+  {
+    mode: 'night_vision',
+    label: 'Night Vision',
+    icon: '🌙',
+    description: 'Enhanced low-light scan with IR edge detection',
+    color: '#00E676',
+  },
+  {
+    mode: 'thermal',
+    label: 'Thermal',
+    icon: '🌡️',
+    description: 'Blood flow & temperature zone mapping',
+    color: '#FF6B6B',
+  },
+];
+
+// ─── Thermal Scan Data ───────────────────────────────
+export interface TemperatureZone {
+  name: string;
+  temperature: number;  // Always positive (°C)
+  bloodFlowIndex: number; // 0–1 (0 = low flow, 1 = high flow)
+  color: string;
+}
+
+export interface ThermalScanData {
+  zones: TemperatureZone[];
+  averageSkinTemp: number;     // Always positive °C
+  coreBodyTempEstimate: number; // Always positive °C
+  bloodFlowScore: number;       // 0–100
+  peripheralCirculation: 'good' | 'moderate' | 'poor';
+  coldExtremityIndex: number;   // 0–1, higher = warmer (positive scale)
+  capturedAt: string;
+}
+
 // ─── User Profile ────────────────────────────────────
 export interface UserProfile {
   id: string;
@@ -11,6 +64,7 @@ export interface UserProfile {
   gender: 'male' | 'female' | 'other';
   weight?: number;       // kg
   height?: number;       // cm
+  bmi?: number;          // calculated
   abhaId?: string;
   abhaVerified?: boolean;
   createdAt: string;
@@ -187,6 +241,8 @@ export interface ScanResult {
   dietPlan?: DietPlan;
   synced: boolean;
   usedLabData: boolean;       // Whether lab data influenced this scan
+  cameraMode?: CameraMode;    // Which camera mode was used
+  thermalData?: ThermalScanData; // Thermal scan data if thermal mode
 }
 
 // ─── DREM Trajectory ─────────────────────────────────
@@ -243,14 +299,14 @@ export interface ScanHistoryEntry {
 // ─── Navigation Types ────────────────────────────────
 export type RootTabParamList = {
   HomeTab: undefined;
-  HistoryTab: undefined;
-  LabReportsTab: undefined;
+  ChatbotTab: undefined;   // Doctor screen
   ProfileTab: undefined;
 };
 
 export type HomeStackParamList = {
   Home: undefined;
-  Scanner: undefined;
+  Scanner: { cameraMode?: string } | undefined;
+  Chatbot: undefined;
   Results: { scanId: string };
   DREM: { scanId: string };
   WhatIf: { scanId: string };
@@ -262,8 +318,14 @@ export type HistoryStackParamList = {
   ResultDetail: { scanId: string };
 };
 
+export type ProfileStackParamList = {
+  ProfileMain: undefined;
+  ResultDetail: { scanId: string };
+};
+
 export type LabReportsStackParamList = {
   LabReportsList: undefined;
   AddLabReport: undefined;
   FamilyHistory: undefined;
 };
+

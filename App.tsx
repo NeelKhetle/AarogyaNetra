@@ -14,20 +14,20 @@ import { Colors } from './src/theme';
 import { useAppStore } from './src/store/useAppStore';
 
 function App(): React.JSX.Element {
-  const { loadPersistedData, initializeDefaultUser } = useAppStore();
+  const { loadPersistedData } = useAppStore();
 
   useEffect(() => {
-    // Load persisted data from AsyncStorage on app start
-    loadPersistedData().then(() => {
-      initializeDefaultUser();
-    });
+    // Load persisted data from AsyncStorage on app start.
+    // User creation is handled by WelcomeScreen (first launch)
+    // or restored here from storage (returning users).
+    loadPersistedData();
   }, []);
 
   return (
     <GestureHandlerRootView style={styles.root}>
       <SafeAreaProvider>
         <StatusBar
-          barStyle="light-content"
+          barStyle="dark-content"
           backgroundColor={Colors.background}
           translucent={false}
         />

@@ -1,6 +1,6 @@
 /**
  * ArogyaNetra AI - Profile Screen
- * User profile management, ABHA ID linking (Ayushman Bharat), and data backup
+ * User profile management, ABHA ID linking (Ayushman Bharat), data backup, and scan history.
  */
 
 import React, { useState, useEffect } from 'react';
@@ -12,10 +12,19 @@ import {
   TextInput,
   Alert,
   Share,
+  TouchableOpacity,
+  Dimensions,
 } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { GlassCard, AnimatedButton } from '../components/common';
 import { Colors, Typography, Spacing, BorderRadius } from '../theme';
 import { useAppStore } from '../store/useAppStore';
+import type { ProfileStackParamList, ScanHistoryEntry } from '../models/types';
+
+type NavProp = NativeStackNavigationProp<ProfileStackParamList, 'ProfileMain'>;
+
+const { width } = Dimensions.get('window');
 
 // ─── ABHA ID Validation ─────────────────────────────────
 function validateAbhaId(id: string): { valid: boolean; formatted: string; error?: string } {
@@ -63,7 +72,64 @@ function luhnCheck(id: string): boolean {
   return sum % 10 === 0;
 }
 
+// ─── Mini Scan History Card ──────────────────────────────
+const ScanHistoryCard: React.FC<{ entry: ScanHistoryEntry; onPress: () => void }> = ({ entry, onPress }) => {
+  const score = entry.overallScore;
+  const scoreColor = score >= 70 ? Colors.success : score >= 45 ? Colors.warning : Colors.danger;
+  const dateStr = new Date(entry.timestamp).toLocaleDateString('en-IN', {
+    day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit',
+  });
+
+  const maxRisk = Math.max(entry.hypertensionRisk, entry.diabetesRisk, entry.anemiaRisk);
+  const primaryRisk = entry.hypertensionRisk === maxRisk ? '❤️ Hypertension'
+    : entry.diabetesRisk === maxRisk ? '🩸 Diabetes' : '👁️ Anemia';
+
+  return (
+    <TouchableOpacity style={historyCardStyles.card} onPress={onPress} activeOpacity={0.8}>
+      <View style={[historyCardStyles.scoreBadge, { backgroundColor: `${scoreColor}15`, borderColor: `${scoreColor}30` }]}>
+        <Text style={[historyCardStyles.scoreText, { color: scoreColor }]}>{score}</Text>
+        <Text style={historyCardStyles.scoreLabel}>/ 100</Text>
+      </View>
+      <View style={{ flex: 1 }}>
+        <Text style={historyCardStyles.date}>{dateStr}</Text>
+        <Text style={historyCardStyles.risk}>Highest: {primaryRisk} — {Math.round(maxRisk * 100)}%</Text>
+        <View style={historyCardStyles.miniRisks}>
+          {[
+            { label: 'HTN', val: entry.hypertensionRisk, color: '#ef4444' },
+            { label: 'DM', val: entry.diabetesRisk, color: Colors.primary },
+            { label: 'ANE', val: entry.anemiaRisk, color: '#f59e0b' },
+          ].map((r) => (
+            <View key={r.label} style={historyCardStyles.miniBar}>
+              <Text style={historyCardStyles.miniLabel}>{r.label}</Text>
+              <View style={historyCardStyles.miniTrack}>
+                <View style={[historyCardStyles.miniFill, { width: `${r.val * 100}%`, backgroundColor: r.color }]} />
+              </View>
+            </View>
+          ))}
+        </View>
+      </View>
+      <Text style={historyCardStyles.arrow}>→</Text>
+    </TouchableOpacity>
+  );
+};
+
+const historyCardStyles = StyleSheet.create({
+  card: { flexDirection: 'row', alignItems: 'center', gap: 14, backgroundColor: Colors.backgroundLight, borderRadius: 16, padding: 14, marginBottom: 10, borderWidth: 1, borderColor: Colors.surfaceBorder },
+  scoreBadge: { width: 58, height: 58, borderRadius: 14, borderWidth: 1.5, alignItems: 'center', justifyContent: 'center' },
+  scoreText: { fontSize: 20, fontWeight: '800' },
+  scoreLabel: { fontSize: 9, color: Colors.textTertiary },
+  date: { fontSize: 12, fontWeight: '600', color: Colors.textSecondary, marginBottom: 2 },
+  risk: { fontSize: 11, color: Colors.textTertiary, marginBottom: 5 },
+  miniRisks: { flexDirection: 'row', gap: 8 },
+  miniBar: { flex: 1, alignItems: 'center', gap: 2 },
+  miniLabel: { fontSize: 9, fontWeight: '700', color: Colors.textTertiary },
+  miniTrack: { width: '100%', height: 4, backgroundColor: Colors.surfaceBorder, borderRadius: 2, overflow: 'hidden' },
+  miniFill: { height: '100%', borderRadius: 2 },
+  arrow: { fontSize: 16, color: Colors.textTertiary, fontWeight: '700' },
+});
+
 export const ProfileScreen: React.FC = () => {
+  const navigation = useNavigation<NavProp>();
   const { user, setUser, scanHistory, labReports, storedScans } = useAppStore();
 
   const [name, setName] = useState(user?.name || '');
@@ -352,6 +418,42 @@ export const ProfileScreen: React.FC = () => {
           style={styles.saveBtn}
         />
       </View>
+
+      {/* ── Scan History ── */}
+      <GlassCard style={styles.formCard}>
+        <View style={styles.historyHeader}>
+          <Text style={styles.sectionTitle}>📊 Scan History</Text>
+          <View style={styles.historyCountBadge}>
+            <Text style={styles.historyCount}>{scanHistory.length}</Text>
+          </View>
+        </View>
+
+        {scanHistory.length === 0 ? (
+          <View style={styles.noHistoryWrap}>
+            <Text style={{ fontSize: 32, marginBottom: 8 }}>📭</Text>
+            <Text style={styles.noHistoryText}>No scans yet. Complete a Face Scan from the Home tab to see your history here.</Text>
+          </View>
+        ) : (
+          <>
+            {scanHistory.slice(0, 5).map((entry) => (
+              <ScanHistoryCard
+                key={entry.scanId}
+                entry={entry}
+                onPress={() => navigation.navigate('ResultDetail', { scanId: entry.scanId })}
+              />
+            ))}
+            {scanHistory.length > 5 && (
+              <TouchableOpacity
+                style={styles.viewAllBtn}
+                onPress={() => navigation.navigate('ResultDetail', { scanId: scanHistory[0].scanId })}
+                activeOpacity={0.7}
+              >
+                <Text style={styles.viewAllText}>View all {scanHistory.length} scans →</Text>
+              </TouchableOpacity>
+            )}
+          </>
+        )}
+      </GlassCard>
 
       {/* Data Backup */}
       <GlassCard style={styles.formCard}>
@@ -642,5 +744,48 @@ const styles = StyleSheet.create({
     lineHeight: 18,
     textAlign: 'center',
     fontStyle: 'italic',
+  },
+  // Scan history
+  historyHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: Spacing.md,
+  },
+  historyCountBadge: {
+    backgroundColor: Colors.primary,
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 3,
+    minWidth: 26,
+    alignItems: 'center',
+  },
+  historyCount: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: '#fff',
+  },
+  noHistoryWrap: {
+    alignItems: 'center',
+    paddingVertical: 20,
+  },
+  noHistoryText: {
+    fontSize: 13,
+    color: Colors.textTertiary,
+    textAlign: 'center',
+    lineHeight: 19,
+  },
+  viewAllBtn: {
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: Colors.primary,
+    paddingVertical: 12,
+    alignItems: 'center',
+    marginTop: 4,
+  },
+  viewAllText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: Colors.primary,
   },
 });

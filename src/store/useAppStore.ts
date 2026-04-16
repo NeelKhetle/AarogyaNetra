@@ -16,10 +16,15 @@ import {
   LabReportEntry,
   FamilyHealthHistory,
   DEFAULT_FAMILY_HISTORY,
+  CameraMode,
 } from '../models/types';
 import { runScanSimulation } from '../services/ml/AISimulationEngine';
 import { generateDREMTrajectory } from '../services/engines/DREMEngine';
 import { runWhatIfSimulation, WhatIfResult } from '../services/engines/WhatIfEngine';
+import {
+  calculateSymptomScores,
+  type QuestionAnswer,
+} from '../services/questionnaire/QuestionnaireEngine';
 
 // Simple ID generator (uuid v4 crashes on Hermes release builds due to missing crypto.getRandomValues)
 function generateId(): string {
@@ -48,7 +53,8 @@ interface AppState {
   currentScan: ScanResult | null;
   scanStatus: 'idle' | 'capturing' | 'processing' | 'complete';
   setScanStatus: (status: AppState['scanStatus']) => void;
-  runScan: () => ScanResult | null;
+  runScan: (cameraMode?: CameraMode) => ScanResult | null;
+  runSymptomScan: (answers: QuestionAnswer[], cameraMode?: CameraMode) => ScanResult | null;
 
   // DREM
   currentDREM: DREMTrajectory | null;
@@ -133,14 +139,14 @@ export const useAppStore = create<AppState>((set, get) => ({
 
   setScanStatus: (status) => set({ scanStatus: status }),
 
-  runScan: () => {
+  runScan: (cameraMode?: CameraMode) => {
     const { user, labReports } = get();
     if (!user) return null;
 
     set({ scanStatus: 'processing' });
 
-    // Pass lab reports to the simulation engine for real data overrides
-    const result = runScanSimulation(user.id, user, labReports);
+    // Pass lab reports and camera mode to the simulation engine
+    const result = runScanSimulation(user.id, user, labReports, cameraMode);
 
     const newStoredScans = { ...get().storedScans, [result.scanId]: result };
 
@@ -157,6 +163,70 @@ export const useAppStore = create<AppState>((set, get) => ({
     SimpleStorage.setJSON(STORAGE_KEYS.STORED_SCANS, newStoredScans);
 
     return result;
+  },
+
+  runSymptomScan: (answers: QuestionAnswer[], cameraMode?: CameraMode) => {
+    const { user, labReports } = get();
+    if (!user) return null;
+
+    set({ scanStatus: 'processing' });
+
+    // 1. Calculate symptom-based scores from Q&A
+    const symptomResult = calculateSymptomScores(answers, user);
+
+    // 2. Run the base simulation (deterministic from profile)
+    const baseResult = runScanSimulation(user.id, user, labReports, cameraMode);
+
+    // 3. Fuse: symptom scores (60%) + simulation scores (40%)
+    const fuseScore = (symptom: number, sim: number): number =>
+      Math.min(1, parseFloat(((symptom * 0.6) / 100 + sim * 0.4).toFixed(2)));
+
+    const fusedResult: ScanResult = {
+      ...baseResult,
+      dietPlan: baseResult.dietPlan,
+      diseases: {
+        hypertension: {
+          ...baseResult.diseases.hypertension,
+          riskScore: fuseScore(
+            symptomResult.finalScores.hypertension,
+            baseResult.diseases.hypertension.riskScore
+          ),
+        },
+        diabetes: {
+          ...baseResult.diseases.diabetes,
+          riskScore: fuseScore(
+            symptomResult.finalScores.diabetes,
+            baseResult.diseases.diabetes.riskScore
+          ),
+        },
+        anemia: {
+          ...baseResult.diseases.anemia,
+          riskScore: fuseScore(
+            symptomResult.finalScores.anemia,
+            baseResult.diseases.anemia.riskScore
+          ),
+        },
+      },
+      overallHealthScore: Math.min(100, Math.max(0, Math.round(
+        100 -
+          (fuseScore(symptomResult.finalScores.hypertension, baseResult.diseases.hypertension.riskScore) * 35 +
+            fuseScore(symptomResult.finalScores.diabetes, baseResult.diseases.diabetes.riskScore) * 35 +
+            fuseScore(symptomResult.finalScores.anemia, baseResult.diseases.anemia.riskScore) * 30)
+      ))),
+    };
+
+    const newStoredScans = { ...get().storedScans, [fusedResult.scanId]: fusedResult };
+
+    set({
+      currentScan: fusedResult,
+      scanStatus: 'complete',
+      storedScans: newStoredScans,
+    });
+
+    get().addScanToHistory(fusedResult);
+    SimpleStorage.setJSON(STORAGE_KEYS.STORED_SCANS, newStoredScans);
+
+    return fusedResult;
   },
 
   // ─── DREM ───────────────────────────

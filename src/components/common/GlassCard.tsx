@@ -1,11 +1,11 @@
 /**
- * ArogyaNetra AI - GlassCard Component
- * Glassmorphic card with frosted glass effect
+ * AarogyaNetra AI - Card Component
+ * "Empathetic Guardian" design: No borders, tonal layering, soft ambient shadows
  */
 
 import React from 'react';
 import { View, StyleSheet, ViewStyle } from 'react-native';
-import { Colors, BorderRadius, Spacing } from '../../theme';
+import { Colors, Spacing } from '../../theme';
 
 interface GlassCardProps {
   children: React.ReactNode;
@@ -19,21 +19,22 @@ export const GlassCard: React.FC<GlassCardProps> = ({
   children,
   style,
   variant = 'default',
-  borderColor,
   padding,
 }) => {
   const variantStyles: Record<string, ViewStyle> = {
     default: {
-      backgroundColor: Colors.surface,
-      borderColor: borderColor || Colors.surfaceBorder,
+      backgroundColor: Colors.surfaceContainerLow || Colors.surfaceLight,
     },
     elevated: {
-      backgroundColor: Colors.surfaceLight,
-      borderColor: borderColor || Colors.surfaceBorderLight,
+      backgroundColor: Colors.surface,
+      elevation: 2,
+      shadowColor: '#191c1d',
+      shadowOffset: { width: 0, height: 12 },
+      shadowOpacity: 0.06,
+      shadowRadius: 32,
     },
     accent: {
-      backgroundColor: 'rgba(108, 99, 255, 0.08)',
-      borderColor: borderColor || 'rgba(108, 99, 255, 0.2)',
+      backgroundColor: `${Colors.primary}08`,
     },
   };
 
@@ -53,8 +54,8 @@ export const GlassCard: React.FC<GlassCardProps> = ({
 
 const styles = StyleSheet.create({
   card: {
-    borderRadius: BorderRadius.lg,
-    borderWidth: 1,
+    borderRadius: 16,
+    borderWidth: 0,  // No borders — Empathetic Guardian rule
     padding: Spacing.lg,
     overflow: 'hidden',
   },
