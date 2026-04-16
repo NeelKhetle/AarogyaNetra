@@ -371,7 +371,7 @@ export const ScannerScreen: React.FC = () => {
     return (
       <ScrollView style={styles.container} contentContainerStyle={styles.readyScroll}>
 
-        {/* Live camera preview — button overlaid at bottom */}
+        {/* Camera preview — fullscreen top, no button inside */}
         <View style={styles.cameraPreview}>
           <Camera
             ref={cameraRef}
@@ -381,27 +381,28 @@ export const ScannerScreen: React.FC = () => {
             photo={false}
             video={false}
           />
-
           {/* Face guide overlay */}
           <View style={styles.faceGuideOverlay}>
             <View style={styles.faceOval} />
             <Text style={styles.guideText}>Position your face here</Text>
           </View>
+          {/* Dark gradient at bottom so button area is legible */}
+          <View style={styles.cameraBottomGrad} />
+        </View>
 
-          {/* ▶ Begin Scan button — overlaid inside camera at bottom */}
-          <View style={styles.cameraButtonOverlay}>
-            <AnimatedButton
-              title="▶  Begin Scan"
-              onPress={handleStartCapture}
-              variant="primary"
-              size="large"
-              fullWidth
-              style={styles.beginButton}
-            />
-            <Text style={styles.disclaimerOverlay}>
-              ⚡ All processing is 100% on-device
-            </Text>
-          </View>
+        {/* Begin Scan button — overlaps camera bottom edge via negative margin */}
+        <View style={styles.scanButtonWrap}>
+          <AnimatedButton
+            title="▶   Begin Scan"
+            onPress={handleStartCapture}
+            variant="primary"
+            size="large"
+            fullWidth
+            style={styles.beginButton}
+          />
+          <Text style={styles.disclaimerOverlay}>
+            ⚡ All processing is 100% on-device
+          </Text>
         </View>
 
         {/* Normal Mode Instructions */}
@@ -410,10 +411,10 @@ export const ScannerScreen: React.FC = () => {
             📷 How It Works
           </Text>
           <View style={styles.instructionList}>
-            <Text style={styles.instruction}>1️⃣  Hold your phone at arm's length</Text>
-            <Text style={styles.instruction}>2️⃣  Ensure good lighting on your face</Text>
-            <Text style={styles.instruction}>3️⃣  Stay still during the 10-second face capture</Text>
-            <Text style={styles.instruction}>4️⃣  Then capture a close-up of your lower eyelid</Text>
+            <Text style={styles.instruction}>1️⃣  Hold your phone at arm's length</Text>
+            <Text style={styles.instruction}>2️⃣  Ensure good lighting on your face</Text>
+            <Text style={styles.instruction}>3️⃣  Stay still during the 10-second face capture</Text>
+            <Text style={styles.instruction}>4️⃣  Then capture a close-up of your lower eyelid</Text>
           </View>
         </GlassCard>
 
@@ -552,37 +553,46 @@ const styles = StyleSheet.create({
   },
   readyScroll: {
     paddingVertical: 0,
-    paddingBottom: 100,
+    paddingBottom: 120,
   },
   captureContent: {
     flex: 1,
     padding: Spacing.lg,
   },
-  // Camera preview — taller, button overlaid inside
+  // Camera preview — tall, edge-to-edge
   cameraPreview: {
-    height: 420,
-    borderRadius: BorderRadius.xl,
-    overflow: 'hidden',
-    marginHorizontal: 0,
-    marginBottom: Spacing.lg,
+    height: 400,
     backgroundColor: '#000',
-    borderWidth: 0,
+    // no overflow:hidden so button below can overlap freely
   },
-  // Begin Scan button overlay at bottom of camera preview
-  cameraButtonOverlay: {
+  // Dark gradient at camera bottom for visual transition
+  cameraBottomGrad: {
     position: 'absolute',
     bottom: 0,
     left: 0,
     right: 0,
-    paddingHorizontal: Spacing.xl,
-    paddingBottom: Spacing.xl,
-    paddingTop: Spacing.xl,
-    backgroundColor: 'rgba(0,0,0,0.45)',
-    alignItems: 'center',
+    height: 80,
+    backgroundColor: 'rgba(0,0,0,0.55)',
+  },
+  // Button wrapper — negative margin overlaps camera bottom edge
+  scanButtonWrap: {
+    marginTop: -32,
+    marginHorizontal: Spacing.lg,
+    backgroundColor: Colors.background,
+    borderRadius: BorderRadius.xl,
+    paddingHorizontal: Spacing.lg,
+    paddingTop: Spacing.lg,
+    paddingBottom: Spacing.sm,
+    elevation: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -4 },
+    shadowOpacity: 0.12,
+    shadowRadius: 12,
+    zIndex: 10,
   },
   disclaimerOverlay: {
     ...Typography.caption,
-    color: 'rgba(255,255,255,0.65)',
+    color: Colors.textTertiary,
     textAlign: 'center',
     marginTop: Spacing.sm,
   },
