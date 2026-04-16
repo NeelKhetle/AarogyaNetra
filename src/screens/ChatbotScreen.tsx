@@ -1,13 +1,12 @@
 /**
  * AarogyaNetra AI — Chatbot Screen
  *
- * 6-Phase doctor-style flow:
- *   Phase 1 → Intro:         Welcome screen with doctor avatar
- *   Phase 2 → Chat:          AI doctor asks 14 symptom questions (Yes/Sometimes/No)
- *   Phase 3 → Camera Select: User picks camera mode (Normal/Night Vision/Thermal)
- *   Phase 4 → Camera Scan:   Real front camera with mode-specific visual filters
- *   Phase 5 → Processing:    "Fusing data…" spinner
- *   Phase 6 → Done:          Navigate to Results
+ * 5-Phase doctor-style flow:
+ *   Phase 1 → Intro:       Welcome screen with doctor avatar
+ *   Phase 2 → Chat:        AI doctor asks 14 symptom questions (Yes/Sometimes/No)
+ *   Phase 3 → Camera Scan: Real front camera with face guide overlay
+ *   Phase 4 → Processing:  "Fusing data…" spinner
+ *   Phase 5 → Done:        Navigate to Results
  *
  * Key design: Questions come BEFORE scan. Scan result is seeded/calibrated
  * by the symptom score, so both signals reinforce each other.
@@ -41,15 +40,14 @@ import {
   type AnswerValue,
   type QuestionAnswer,
 } from '../services/questionnaire/QuestionnaireEngine';
-import type { HomeStackParamList, CameraMode } from '../models/types';
-import { CAMERA_MODES } from '../models/types';
+import type { HomeStackParamList } from '../models/types';
 import Svg, { Circle } from 'react-native-svg';
 
 const { width } = Dimensions.get('window');
 type NavProp = NativeStackNavigationProp<HomeStackParamList, 'Chatbot'>;
 
 // ─── Types ───────────────────────────────────────────────
-type Phase = 'intro' | 'chat' | 'camera_select' | 'camera_scan' | 'processing' | 'done';
+type Phase = 'intro' | 'chat' | 'camera_scan' | 'processing' | 'done';
 
 // ─── Doctor Avatar ───────────────────────────────────────
 const DoctorAvatar: React.FC<{ pulse?: boolean }> = ({ pulse = false }) => {
@@ -766,7 +764,7 @@ export const ChatbotScreen: React.FC = () => {
 
       setTimeout(() => {
         if (isLast) {
-          setPhase('camera_select');
+          handleStartCameraScan();
         } else {
           setCurrentIdx(prev => prev + 1);
           setAnswerDisabled(false);
@@ -776,28 +774,27 @@ export const ChatbotScreen: React.FC = () => {
     [currentIdx, answers, currentQ, answerDisabled]
   );
 
-  // Camera state
-  const [cameraMode, setCameraMode] = useState<CameraMode>('normal');
+  // Camera state — always Normal mode
   const { hasPermission, requestPermission } = useCameraPermission();
   const device = useCameraDevice('front');
   const cameraRef = useRef<Camera>(null);
-  const [scanCountdown, setScanCountdown] = useState(12);
+  const [scanCountdown, setScanCountdown] = useState(10);
   const scanPulse = useRef(new Animated.Value(0)).current;
 
   // ── Scan complete → processing ──────────────────────────
   const handleScanComplete = useCallback(() => {
     setPhase('processing');
     setTimeout(() => {
-      const result = runSymptomScan(answers, cameraMode);
+      const result = runSymptomScan(answers, 'normal');
       if (result) {
         setPhase('done');
         navigation.replace('Results', { scanId: result.scanId });
       }
     }, 3500);
-  }, [answers, runSymptomScan, cameraMode]);
+  }, [answers, runSymptomScan]);
 
-  // Camera mode selection done → request permission → open camera
-  const handleCameraModeSelected = useCallback(async () => {
+  // Q&A done → request permission → open camera
+  const handleStartCameraScan = useCallback(async () => {
     if (!hasPermission) {
       const granted = await requestPermission();
       if (!granted) {
@@ -813,8 +810,8 @@ export const ChatbotScreen: React.FC = () => {
       }
     }
     setPhase('camera_scan');
-    setScanCountdown(cameraMode === 'thermal' ? 12 : 10);
-  }, [hasPermission, requestPermission, cameraMode]);
+    setScanCountdown(10);
+  }, [hasPermission, requestPermission]);
 
   // Camera scan countdown
   useEffect(() => {
@@ -946,86 +943,10 @@ export const ChatbotScreen: React.FC = () => {
     );
   }
 
-  // ── Camera Mode Selection Phase ────────────────────────
-  if (phase === 'camera_select') {
-    const modeInfo = CAMERA_MODES.find(m => m.mode === cameraMode)!;
-    return (
-      <View style={[styles.root, { backgroundColor: bgColor }]}>
-        <ScrollView contentContainerStyle={{ padding: Spacing.lg, paddingBottom: 40 }}>
-          {/* Doctor message */}
-          <View style={styles.questionRow}>
-            <DoctorAvatar />
-            <ChatBubble
-              text="Great job answering all the questions! 🎉 Now I'll do a quick face scan. Please choose your preferred camera mode below."
-              slideIn
-            />
-          </View>
 
-          {/* Camera mode cards */}
-          <Text style={camSelectStyles.title}>Select Camera Mode</Text>
-          {CAMERA_MODES.map((mode) => {
-            const isActive = cameraMode === mode.mode;
-            return (
-              <TouchableOpacity
-                key={mode.mode}
-                style={[
-                  camSelectStyles.modeCard,
-                  { borderColor: isActive ? mode.color : Colors.surfaceBorder },
-                  isActive && { backgroundColor: `${mode.color}12` },
-                ]}
-                onPress={() => setCameraMode(mode.mode)}
-                activeOpacity={0.7}
-              >
-                <View style={camSelectStyles.modeHeader}>
-                  <Text style={camSelectStyles.modeIcon}>{mode.icon}</Text>
-                  <View style={{ flex: 1 }}>
-                    <Text style={[camSelectStyles.modeLabel, isActive && { color: mode.color }]}>
-                      {mode.label}
-                    </Text>
-                    <Text style={camSelectStyles.modeDesc}>{mode.description}</Text>
-                  </View>
-                  {isActive && (
-                    <View style={[camSelectStyles.activeCheck, { backgroundColor: mode.color }]}>
-                      <Text style={{ color: '#fff', fontSize: 12 }}>✓</Text>
-                    </View>
-                  )}
-                </View>
 
-                {/* Thermal mode extra info */}
-                {mode.mode === 'thermal' && isActive && (
-                  <View style={camSelectStyles.thermalInfo}>
-                    <Text style={camSelectStyles.thermalInfoText}>
-                      🩸 Simulates blood flow heat map • Face appears red/warm in high-flow areas
-                    </Text>
-                  </View>
-                )}
-              </TouchableOpacity>
-            );
-          })}
-
-          {/* Begin scan button */}
-          <TouchableOpacity
-            style={[camSelectStyles.beginBtn, { backgroundColor: modeInfo.color }]}
-            onPress={handleCameraModeSelected}
-            activeOpacity={0.8}
-          >
-            <Text style={camSelectStyles.beginBtnText}>
-              {modeInfo.icon}  Begin {modeInfo.label} Scan
-            </Text>
-          </TouchableOpacity>
-
-          <Text style={styles.disclaimer}>
-            🔒 All processing is on-device — no images leave your phone
-          </Text>
-        </ScrollView>
-      </View>
-    );
-  }
-
-  // ── Camera Scan Phase (Real Camera + Overlays) ─────────
+  // ── Camera Scan Phase (Real Camera + Normal Overlay) ────
   if (phase === 'camera_scan') {
-    const modeInfo = CAMERA_MODES.find(m => m.mode === cameraMode)!;
-
     return (
       <View style={[styles.root, { backgroundColor: '#000' }]}>
         {/* Live camera feed */}
@@ -1040,152 +961,15 @@ export const ChatbotScreen: React.FC = () => {
               video={false}
             />
 
-            {/* === THERMAL CAMERA FILTER === */}
-            {cameraMode === 'thermal' && (
-              <View style={camScanStyles.thermalFilterContainer}>
-                {/* Base red/warm tint — makes entire face look reddish */}
-                <View style={camScanStyles.thermalRedTint} />
-
-                {/* Hot zones — HIGH blood flow areas (deep red, high opacity) */}
-                {/* Forehead — very warm */}
-                <Animated.View style={[
-                  camScanStyles.heatZone,
-                  { top: '12%', left: '25%', width: '50%', height: '15%',
-                    backgroundColor: '#FF0000',
-                    opacity: scanPulse.interpolate({ inputRange: [0, 1], outputRange: [0.35, 0.55] }),
-                    borderRadius: 60 },
-                ]} />
-                {/* Left temple — arterial pulse point */}
-                <Animated.View style={[
-                  camScanStyles.heatZone,
-                  { top: '18%', left: '8%', width: '15%', height: '12%',
-                    backgroundColor: '#FF1111',
-                    opacity: scanPulse.interpolate({ inputRange: [0, 1], outputRange: [0.4, 0.6] }),
-                    borderRadius: 30 },
-                ]} />
-                {/* Right temple */}
-                <Animated.View style={[
-                  camScanStyles.heatZone,
-                  { top: '18%', left: '77%', width: '15%', height: '12%',
-                    backgroundColor: '#FF1111',
-                    opacity: scanPulse.interpolate({ inputRange: [0, 1], outputRange: [0.4, 0.6] }),
-                    borderRadius: 30 },
-                ]} />
-                {/* Left cheek — moderate blood flow */}
-                <Animated.View style={[
-                  camScanStyles.heatZone,
-                  { top: '35%', left: '10%', width: '25%', height: '20%',
-                    backgroundColor: '#FF4400',
-                    opacity: scanPulse.interpolate({ inputRange: [0, 1], outputRange: [0.25, 0.4] }),
-                    borderRadius: 40 },
-                ]} />
-                {/* Right cheek */}
-                <Animated.View style={[
-                  camScanStyles.heatZone,
-                  { top: '35%', left: '65%', width: '25%', height: '20%',
-                    backgroundColor: '#FF4400',
-                    opacity: scanPulse.interpolate({ inputRange: [0, 1], outputRange: [0.25, 0.4] }),
-                    borderRadius: 40 },
-                ]} />
-                {/* Nose — cooler area (less blood flow) */}
-                <View style={[
-                  camScanStyles.heatZone,
-                  { top: '33%', left: '38%', width: '24%', height: '22%',
-                    backgroundColor: '#FF8800',
-                    opacity: 0.15,
-                    borderRadius: 30 },
-                ]} />
-                {/* Chin — moderate-cool */}
-                <View style={[
-                  camScanStyles.heatZone,
-                  { top: '60%', left: '30%', width: '40%', height: '12%',
-                    backgroundColor: '#FFAA00',
-                    opacity: 0.18,
-                    borderRadius: 25 },
-                ]} />
-                {/* Neck/carotid — HIGH blood flow */}
-                <Animated.View style={[
-                  camScanStyles.heatZone,
-                  { top: '72%', left: '25%', width: '50%', height: '18%',
-                    backgroundColor: '#FF0000',
-                    opacity: scanPulse.interpolate({ inputRange: [0, 1], outputRange: [0.3, 0.5] }),
-                    borderRadius: 30 },
-                ]} />
-
-                {/* Blood flow pulse dots traveling up carotids */}
-                <Animated.View style={[
-                  camScanStyles.bloodPulse,
-                  { left: '32%',
-                    top: scanPulse.interpolate({ inputRange: [0, 1], outputRange: ['75%', '20%'] }),
-                    opacity: scanPulse.interpolate({ inputRange: [0, 0.5, 1], outputRange: [0.2, 0.9, 0.2] }),
-                  },
-                ]} />
-                <Animated.View style={[
-                  camScanStyles.bloodPulse,
-                  { left: '65%',
-                    top: scanPulse.interpolate({ inputRange: [0, 1], outputRange: ['75%', '20%'] }),
-                    opacity: scanPulse.interpolate({ inputRange: [0, 0.5, 1], outputRange: [0.2, 0.9, 0.2] }),
-                  },
-                ]} />
-
-                {/* Thermal badge */}
-                <View style={camScanStyles.thermalBadge}>
-                  <Text style={camScanStyles.thermalBadgeText}>🌡️ THERMAL • BLOOD FLOW</Text>
-                </View>
-
-                {/* Temperature scale bar */}
-                <View style={camScanStyles.scaleBar}>
-                  <View style={camScanStyles.scaleGradientHot} />
-                  <View style={camScanStyles.scaleGradientWarm} />
-                  <View style={camScanStyles.scaleGradientCool} />
-                  <View style={camScanStyles.scaleLabels}>
-                    <Text style={camScanStyles.scaleText}>38°C</Text>
-                    <Text style={camScanStyles.scaleText}>36°C</Text>
-                    <Text style={camScanStyles.scaleText}>34°C</Text>
-                  </View>
-                </View>
-              </View>
-            )}
-
-            {/* === NIGHT VISION FILTER === */}
-            {cameraMode === 'night_vision' && (
-              <View style={camScanStyles.nightFilterContainer}>
-                <View style={camScanStyles.nightGreenTint} />
-                {/* Scan lines */}
-                {Array.from({ length: 15 }).map((_, i) => (
-                  <View key={i} style={[camScanStyles.nightScanLine, { top: `${(i + 1) * 6}%` }]} />
-                ))}
-                {/* Edge detection points */}
-                {[
-                  { x: 35, y: 25 }, { x: 65, y: 25 },
-                  { x: 50, y: 40 }, { x: 38, y: 55 },
-                  { x: 62, y: 55 }, { x: 50, y: 68 },
-                ].map((pt, i) => (
-                  <Animated.View key={i} style={[
-                    camScanStyles.nightEdgeDot,
-                    { left: `${pt.x}%`, top: `${pt.y}%`,
-                      opacity: scanPulse.interpolate({ inputRange: [0, 1], outputRange: [0.3, 1] }) },
-                  ]} />
-                ))}
-                {/* Face outline */}
-                <View style={camScanStyles.nightFaceOutline} />
-                <View style={camScanStyles.nightBadge}>
-                  <Text style={camScanStyles.nightBadgeText}>🌙 NIGHT VISION • IR ENHANCED</Text>
-                </View>
-              </View>
-            )}
-
             {/* === NORMAL MODE — face guide === */}
-            {cameraMode === 'normal' && (
-              <View style={camScanStyles.normalOverlay}>
-                <View style={camScanStyles.normalFaceOval} />
-              </View>
-            )}
+            <View style={camScanStyles.normalOverlay}>
+              <View style={camScanStyles.normalFaceOval} />
+            </View>
 
             {/* Countdown overlay */}
             <View style={camScanStyles.countdownOverlay}>
               <View style={camScanStyles.countdownCircle}>
-                <Text style={[camScanStyles.countdownText, { color: modeInfo.color }]}>
+                <Text style={[camScanStyles.countdownText, { color: Colors.primary }]}>
                   {scanCountdown}s
                 </Text>
               </View>
@@ -1201,23 +985,18 @@ export const ChatbotScreen: React.FC = () => {
         {/* Info bar at bottom */}
         <View style={camScanStyles.infoBar}>
           <View style={camScanStyles.liveIndicator}>
-            <View style={[camScanStyles.liveDot, { backgroundColor: modeInfo.color }]} />
-            <Text style={[camScanStyles.liveText, { color: modeInfo.color }]}>
-              {cameraMode === 'thermal' ? 'THERMAL SCANNING' :
-               cameraMode === 'night_vision' ? 'IR SCANNING' : 'LIVE SCANNING'}
-            </Text>
+            <View style={[camScanStyles.liveDot, { backgroundColor: Colors.primary }]} />
+            <Text style={[camScanStyles.liveText, { color: Colors.primary }]}>LIVE SCANNING</Text>
           </View>
           <Text style={camScanStyles.infoText}>
-            {cameraMode === 'thermal'
-              ? 'Mapping blood flow & temperature zones'
-              : cameraMode === 'night_vision'
-              ? 'Enhanced rPPG capture with IR edge detection'
-              : 'Capturing rPPG signal from facial micro-changes'}
+            Capturing rPPG signal from facial micro-changes
           </Text>
         </View>
       </View>
     );
   }
+
+
 
   // ── Processing Phase ────────────────────────────────────
   if (phase === 'processing') {

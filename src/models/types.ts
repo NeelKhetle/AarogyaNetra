@@ -4,7 +4,7 @@
  */
 
 // ─── Camera Modes ────────────────────────────────────
-export type CameraMode = 'normal' | 'night_vision' | 'thermal';
+export type CameraMode = 'normal';
 
 export interface CameraModeInfo {
   mode: CameraMode;
@@ -21,20 +21,6 @@ export const CAMERA_MODES: CameraModeInfo[] = [
     icon: '📷',
     description: 'Standard rPPG face scan with eye analysis',
     color: '#6C63FF',
-  },
-  {
-    mode: 'night_vision',
-    label: 'Night Vision',
-    icon: '🌙',
-    description: 'Enhanced low-light scan with IR edge detection',
-    color: '#00E676',
-  },
-  {
-    mode: 'thermal',
-    label: 'Thermal',
-    icon: '🌡️',
-    description: 'Blood flow & temperature zone mapping',
-    color: '#FF6B6B',
   },
 ];
 
