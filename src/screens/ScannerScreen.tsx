@@ -371,7 +371,7 @@ export const ScannerScreen: React.FC = () => {
     return (
       <ScrollView style={styles.container} contentContainerStyle={styles.readyScroll}>
 
-        {/* Live camera preview */}
+        {/* Live camera preview — button overlaid at bottom */}
         <View style={styles.cameraPreview}>
           <Camera
             ref={cameraRef}
@@ -381,40 +381,42 @@ export const ScannerScreen: React.FC = () => {
             photo={false}
             video={false}
           />
+
           {/* Face guide overlay */}
           <View style={styles.faceGuideOverlay}>
             <View style={styles.faceOval} />
             <Text style={styles.guideText}>Position your face here</Text>
+          </View>
+
+          {/* ▶ Begin Scan button — overlaid inside camera at bottom */}
+          <View style={styles.cameraButtonOverlay}>
+            <AnimatedButton
+              title="▶  Begin Scan"
+              onPress={handleStartCapture}
+              variant="primary"
+              size="large"
+              fullWidth
+              style={styles.beginButton}
+            />
+            <Text style={styles.disclaimerOverlay}>
+              ⚡ All processing is 100% on-device
+            </Text>
           </View>
         </View>
 
         {/* Normal Mode Instructions */}
         <GlassCard style={styles.instructionCard}>
           <Text style={[styles.instructionTitle, { color: Colors.primary }]}>
-            📷 Normal Mode Instructions
+            📷 How It Works
           </Text>
           <View style={styles.instructionList}>
             <Text style={styles.instruction}>1️⃣  Hold your phone at arm's length</Text>
             <Text style={styles.instruction}>2️⃣  Ensure good lighting on your face</Text>
-            <Text style={styles.instruction}>3️⃣  Stay still during the 10-second capture</Text>
-            <Text style={styles.instruction}>4️⃣  Then capture a close-up of your eye</Text>
+            <Text style={styles.instruction}>3️⃣  Stay still during the 10-second face capture</Text>
+            <Text style={styles.instruction}>4️⃣  Then capture a close-up of your lower eyelid</Text>
           </View>
         </GlassCard>
 
-        {/* CTA — Below the instruction card, matching target layout */}
-        <View style={styles.ctaArea}>
-          <AnimatedButton
-            title="▶  Begin Normal Scan"
-            onPress={handleStartCapture}
-            variant="primary"
-            size="large"
-            fullWidth
-            style={styles.beginButton}
-          />
-          <Text style={styles.disclaimer}>
-            ⚡ All processing happens on your device — no data leaves your phone
-          </Text>
-        </View>
       </ScrollView>
     );
   }
@@ -549,23 +551,40 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.background,
   },
   readyScroll: {
-    paddingVertical: Spacing.lg,
+    paddingVertical: 0,
     paddingBottom: 100,
   },
   captureContent: {
     flex: 1,
     padding: Spacing.lg,
   },
-  // Camera preview
+  // Camera preview — taller, button overlaid inside
   cameraPreview: {
-    height: 280,
+    height: 420,
     borderRadius: BorderRadius.xl,
     overflow: 'hidden',
-    marginHorizontal: Spacing.lg,
+    marginHorizontal: 0,
     marginBottom: Spacing.lg,
     backgroundColor: '#000',
-    borderWidth: 1,
-    borderColor: `${Colors.primary}40`,
+    borderWidth: 0,
+  },
+  // Begin Scan button overlay at bottom of camera preview
+  cameraButtonOverlay: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    paddingHorizontal: Spacing.xl,
+    paddingBottom: Spacing.xl,
+    paddingTop: Spacing.xl,
+    backgroundColor: 'rgba(0,0,0,0.45)',
+    alignItems: 'center',
+  },
+  disclaimerOverlay: {
+    ...Typography.caption,
+    color: 'rgba(255,255,255,0.65)',
+    textAlign: 'center',
+    marginTop: Spacing.sm,
   },
   cameraPreviewActive: {
     height: 360,
@@ -702,25 +721,16 @@ const styles = StyleSheet.create({
     ...Typography.body,
     color: Colors.textSecondary,
   },
-  // CTA area — directly below instruction card
-  ctaArea: {
-    paddingHorizontal: Spacing.lg,
-  },
-  // Buttons
+  // Begin scan button (inside camera overlay)
   beginButton: {
     borderRadius: BorderRadius.xl,
-    paddingVertical: 18,
+    paddingVertical: 16,
     backgroundColor: Colors.primary,
+    width: '100%',
   },
   captureBtn: {
     borderRadius: BorderRadius.xl,
     paddingVertical: 18,
-  },
-  disclaimer: {
-    ...Typography.caption,
-    color: Colors.textTertiary,
-    textAlign: 'center',
-    marginTop: Spacing.lg,
   },
   // Permission screen
   permissionContainer: {
