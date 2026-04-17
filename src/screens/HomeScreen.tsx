@@ -19,6 +19,7 @@ import {
   Modal,
   FlatList,
   TextInput,
+  SafeAreaView,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -267,6 +268,172 @@ const trendStyles = StyleSheet.create({
   trendText: { fontSize: 13, color: Colors.textSecondary, fontWeight: '500' },
 });
 
+// ─── Health Check Questions Modal ────────────────────
+const QUICK_QUESTIONS = [
+  { id: 'Q1', emoji: '💧', text: 'Do you feel very thirsty often or urinate frequently?' },
+  { id: 'Q2', emoji: '❤️', text: 'Do you get frequent headaches or feel your heart racing at rest?' },
+  { id: 'Q3', emoji: '😴', text: 'Do you feel tired or low on energy for most of the day?' },
+  { id: 'Q4', emoji: '😮‍💨', text: 'Do you feel breathless climbing stairs or walking quickly?' },
+  { id: 'Q5', emoji: '🌡️', text: 'Do people say you look pale, or do your hands/feet feel cold?' },
+];
+
+type QuickAnswer = 'yes' | 'sometimes' | 'no';
+
+const HealthCheckModal: React.FC<{ visible: boolean; onClose: () => void; onProceed: () => void }> = ({ visible, onClose, onProceed }) => {
+  const [step, setStep] = useState(0);
+  const [answers, setAnswers] = useState<Record<string, QuickAnswer>>({});
+  const slideAnim = useRef(new Animated.Value(0)).current;
+  const { t } = useLanguage();
+
+  const currentQ = QUICK_QUESTIONS[step];
+  const isLast = step === QUICK_QUESTIONS.length - 1;
+
+  const animateNext = () => {
+    Animated.sequence([
+      Animated.timing(slideAnim, { toValue: -30, duration: 180, useNativeDriver: true }),
+      Animated.timing(slideAnim, { toValue: 0, duration: 180, useNativeDriver: true }),
+    ]).start();
+  };
+
+  const handleAnswer = (answer: QuickAnswer) => {
+    setAnswers(prev => ({ ...prev, [currentQ.id]: answer }));
+    if (isLast) {
+      // Last question answered — proceed to scanner
+      setTimeout(() => {
+        setStep(0);
+        setAnswers({});
+        onProceed();
+      }, 350);
+    } else {
+      animateNext();
+      setStep(s => s + 1);
+    }
+  };
+
+  const handleClose = () => {
+    setStep(0);
+    setAnswers({});
+    onClose();
+  };
+
+  return (
+    <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={handleClose}>
+      <SafeAreaView style={healthModalStyles.container}>
+        {/* Header */}
+        <View style={healthModalStyles.header}>
+          <View>
+            <Text style={healthModalStyles.title}>🩺 Health Check</Text>
+            <Text style={healthModalStyles.subtitle}>Answer to get personalized results</Text>
+          </View>
+          <TouchableOpacity onPress={handleClose} style={healthModalStyles.closeBtn}>
+            <Text style={healthModalStyles.closeText}>✕</Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* Progress bar */}
+        <View style={healthModalStyles.progressTrack}>
+          <View style={[healthModalStyles.progressFill, { width: `${((step + 1) / QUICK_QUESTIONS.length) * 100}%` }]} />
+        </View>
+        <Text style={healthModalStyles.progressLabel}>
+          Question {step + 1} of {QUICK_QUESTIONS.length}
+        </Text>
+
+        {/* Question */}
+        <Animated.View style={[healthModalStyles.questionArea, { transform: [{ translateX: slideAnim }] }]}>
+          <Text style={healthModalStyles.qEmoji}>{currentQ.emoji}</Text>
+          <Text style={healthModalStyles.qText}>{currentQ.text}</Text>
+        </Animated.View>
+
+        {/* Answer options */}
+        <View style={healthModalStyles.answerArea}>
+          {(['yes', 'sometimes', 'no'] as QuickAnswer[]).map(opt => (
+            <TouchableOpacity
+              key={opt}
+              style={[
+                healthModalStyles.answerBtn,
+                answers[currentQ.id] === opt && healthModalStyles.answerBtnActive,
+                opt === 'yes' && healthModalStyles.answerBtnYes,
+                opt === 'sometimes' && healthModalStyles.answerBtnSometimes,
+                opt === 'no' && healthModalStyles.answerBtnNo,
+              ]}
+              onPress={() => handleAnswer(opt)}
+              activeOpacity={0.85}
+            >
+              <Text style={healthModalStyles.answerIcon}>
+                {opt === 'yes' ? '✅' : opt === 'sometimes' ? '🔄' : '❌'}
+              </Text>
+              <Text style={[
+                healthModalStyles.answerLabel,
+                answers[currentQ.id] === opt && { color: '#fff', fontWeight: '800' },
+              ]}>
+                {opt === 'yes' ? 'Yes' : opt === 'sometimes' ? 'Sometimes' : 'No'}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+
+        {/* What's next banner */}
+        <View style={healthModalStyles.nextBanner}>
+          <Text style={healthModalStyles.nextTitle}>📷 After questions:</Text>
+          <View style={healthModalStyles.nextSteps}>
+            <View style={healthModalStyles.nextStep}>
+              <Text style={healthModalStyles.nextStepIcon}>1️⃣</Text>
+              <Text style={healthModalStyles.nextStepText}>Face Scan (10 sec)</Text>
+            </View>
+            <Text style={healthModalStyles.nextArrow}>→</Text>
+            <View style={healthModalStyles.nextStep}>
+              <Text style={healthModalStyles.nextStepIcon}>2️⃣</Text>
+              <Text style={healthModalStyles.nextStepText}>Eye Scan</Text>
+            </View>
+            <Text style={healthModalStyles.nextArrow}>→</Text>
+            <View style={healthModalStyles.nextStep}>
+              <Text style={healthModalStyles.nextStepIcon}>📊</Text>
+              <Text style={healthModalStyles.nextStepText}>Results</Text>
+            </View>
+          </View>
+        </View>
+
+        {/* Skip option */}
+        <TouchableOpacity onPress={onProceed} style={healthModalStyles.skipBtn}>
+          <Text style={healthModalStyles.skipText}>Skip questions → Go to scan directly</Text>
+        </TouchableOpacity>
+      </SafeAreaView>
+    </Modal>
+  );
+};
+
+const healthModalStyles = StyleSheet.create({
+  container: { flex: 1, backgroundColor: Colors.background },
+  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', padding: 24, paddingTop: 16 },
+  title: { fontSize: 20, fontWeight: '800', color: Colors.textPrimary },
+  subtitle: { fontSize: 13, color: Colors.textTertiary, marginTop: 2 },
+  closeBtn: { width: 34, height: 34, borderRadius: 17, backgroundColor: Colors.surfaceContainerLow, alignItems: 'center', justifyContent: 'center' },
+  closeText: { fontSize: 14, fontWeight: '700', color: Colors.textSecondary },
+  progressTrack: { height: 6, backgroundColor: Colors.surfaceContainerLow, marginHorizontal: 24, borderRadius: 3, overflow: 'hidden' },
+  progressFill: { height: 6, backgroundColor: Colors.primary, borderRadius: 3 },
+  progressLabel: { fontSize: 11, color: Colors.textTertiary, textAlign: 'center', marginTop: 6, marginBottom: 8 },
+  questionArea: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 32, paddingBottom: 8 },
+  qEmoji: { fontSize: 56, marginBottom: 20 },
+  qText: { fontSize: 19, fontWeight: '700', color: Colors.textPrimary, textAlign: 'center', lineHeight: 27 },
+  answerArea: { paddingHorizontal: 24, gap: 10, marginBottom: 16 },
+  answerBtn: { flexDirection: 'row', alignItems: 'center', gap: 14, borderRadius: 16, paddingVertical: 16, paddingHorizontal: 20, borderWidth: 1.5, borderColor: Colors.surfaceBorder, backgroundColor: '#fff' },
+  answerBtnActive: { borderColor: Colors.primary },
+  answerBtnYes: { },
+  answerBtnSometimes: { },
+  answerBtnNo: { },
+  answerIcon: { fontSize: 20 },
+  answerLabel: { fontSize: 16, fontWeight: '600', color: Colors.textPrimary },
+  nextBanner: { marginHorizontal: 24, backgroundColor: `${Colors.primary}08`, borderRadius: 14, padding: 14, borderWidth: 1, borderColor: `${Colors.primary}20`, marginBottom: 12 },
+  nextTitle: { fontSize: 12, fontWeight: '700', color: Colors.textTertiary, marginBottom: 8 },
+  nextSteps: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 },
+  nextStep: { alignItems: 'center', gap: 3 },
+  nextStepIcon: { fontSize: 16 },
+  nextStepText: { fontSize: 10, color: Colors.textSecondary, fontWeight: '600' },
+  nextArrow: { fontSize: 14, color: Colors.textTertiary, fontWeight: '700' },
+  skipBtn: { paddingVertical: 14, alignItems: 'center', marginBottom: 8 },
+  skipText: { fontSize: 13, color: Colors.textTertiary, textDecorationLine: 'underline' },
+});
+
 // ─── Language Switcher Modal ──────────────────────────
 const LanguageSwitcherModal: React.FC<{ visible: boolean; onClose: () => void }> = ({ visible, onClose }) => {
   const { language, setLanguage } = useAppStore();
@@ -345,6 +512,7 @@ export const HomeScreen: React.FC = () => {
   const currentLang = LANGUAGE_LIST.find(l => l.code === language) ?? LANGUAGE_LIST.find(l => l.code === 'en')!;
 
   const [langModalVisible, setLangModalVisible] = useState(false);
+  const [healthCheckVisible, setHealthCheckVisible] = useState(false);
 
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideY = useRef(new Animated.Value(20)).current;
@@ -394,25 +562,41 @@ export const HomeScreen: React.FC = () => {
           </View>
         </View>
 
-        {/* ── Primary CTA — Face Scan ── */}
+        <HealthCheckModal
+          visible={healthCheckVisible}
+          onClose={() => setHealthCheckVisible(false)}
+          onProceed={() => {
+            setHealthCheckVisible(false);
+            navigation.navigate('Scanner', { cameraMode: 'normal', skipReady: true });
+          }}
+        />
+
+        {/* ── Primary CTA — Check Scan ── */}
         <View style={styles.scanSection}>
           <PulseScanButton
-            onPress={() => navigation.navigate('Scanner', { cameraMode: 'normal' })}
-            label={t('start_scan')}
-            sublabel={t('scan_hint')}
+            onPress={() => setHealthCheckVisible(true)}
+            label="Check Scan"
+            sublabel="Questions → Face Scan → Eye Scan"
           />
-          <Text style={styles.scanHint}>{t('scan_instruction')}</Text>
+          <Text style={styles.scanHint}>Answer 5 quick health questions, then scan</Text>
 
-          {/* Eye scan shortcut */}
-          <TouchableOpacity
-            style={styles.eyeScanChip}
-            onPress={() => navigation.navigate('Scanner', { cameraMode: 'normal' })}
-            activeOpacity={0.8}
-          >
-            <Text style={styles.eyeScanIcon}>👁️</Text>
-            <Text style={styles.eyeScanLabel}>{t('eye_scan_label')}</Text>
-            <Text style={styles.eyeScanArrow}>→</Text>
-          </TouchableOpacity>
+          {/* Scan flow chips */}
+          <View style={styles.scanFlowRow}>
+            <View style={styles.scanFlowChip}>
+              <Text style={styles.scanFlowIcon}>💬</Text>
+              <Text style={styles.scanFlowLabel}>Questions</Text>
+            </View>
+            <Text style={styles.scanFlowArrow}>→</Text>
+            <View style={styles.scanFlowChip}>
+              <Text style={styles.scanFlowIcon}>📷</Text>
+              <Text style={styles.scanFlowLabel}>Face Scan</Text>
+            </View>
+            <Text style={styles.scanFlowArrow}>→</Text>
+            <View style={[styles.scanFlowChip, { borderColor: Colors.anemia }]}>
+              <Text style={styles.scanFlowIcon}>👁️</Text>
+              <Text style={[styles.scanFlowLabel, { color: Colors.anemia }]}>Eye Scan</Text>
+            </View>
+          </View>
         </View>
 
         {/* ── What We Detect ── */}
@@ -462,7 +646,7 @@ export const HomeScreen: React.FC = () => {
                 </Text>
                 <TouchableOpacity
                   style={styles.rescanBtn}
-                  onPress={() => navigation.navigate('Scanner', { cameraMode: 'normal' })}
+                  onPress={() => setHealthCheckVisible(true)}
                   activeOpacity={0.8}
                 >
                   <Text style={styles.rescanText}>{t('rescan')}</Text>
@@ -534,8 +718,8 @@ export const HomeScreen: React.FC = () => {
           <Text style={styles.sectionTitle}>{t('how_it_works')}</Text>
           <View style={styles.stepsCard}>
             {[
-              { step: '1', icon: '📷', title: t('step_face_scan'), desc: t('step_face_scan_desc') },
-              { step: '2', icon: '💬', title: t('step_questions'), desc: t('step_questions_desc') },
+              { step: '1', icon: '💬', title: t('step_questions'), desc: t('step_questions_desc') },
+              { step: '2', icon: '📷', title: t('step_face_scan'), desc: t('step_face_scan_desc') },
               { step: '3', icon: '🧠', title: t('step_ai_analysis'), desc: t('step_ai_analysis_desc') },
               { step: '4', icon: '📋', title: t('step_report'), desc: t('step_report_desc') },
             ].map((s, i) => (
@@ -583,10 +767,12 @@ const styles = StyleSheet.create({
   // Scan section
   scanSection: { alignItems: 'center', paddingHorizontal: 24, marginTop: 16 },
   scanHint: { fontSize: 12, color: Colors.textTertiary, textAlign: 'center', marginTop: 4, lineHeight: 17 },
-  eyeScanChip: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: '#fff', borderRadius: 999, paddingHorizontal: 18, paddingVertical: 11, marginTop: 14, borderWidth: 1, borderColor: Colors.surfaceBorder, elevation: 1, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.04, shadowRadius: 6 },
-  eyeScanIcon: { fontSize: 18 },
-  eyeScanLabel: { flex: 1, fontSize: 13, fontWeight: '600', color: Colors.textSecondary },
-  eyeScanArrow: { fontSize: 14, color: Colors.primary, fontWeight: '800' },
+  // Scan flow chips row
+  scanFlowRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 16 },
+  scanFlowChip: { flexDirection: 'column', alignItems: 'center', gap: 4, backgroundColor: '#fff', borderRadius: 14, paddingHorizontal: 14, paddingVertical: 10, borderWidth: 1.5, borderColor: Colors.primary, elevation: 1, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.04, shadowRadius: 6 },
+  scanFlowIcon: { fontSize: 18 },
+  scanFlowLabel: { fontSize: 11, fontWeight: '700', color: Colors.primary },
+  scanFlowArrow: { fontSize: 16, color: Colors.textTertiary, fontWeight: '700' },
 
   // Detect chips
   detectRow: { flexDirection: 'row', gap: 8, paddingHorizontal: 24, marginTop: 20, justifyContent: 'center' },

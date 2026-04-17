@@ -291,7 +291,7 @@ export type RootTabParamList = {
 
 export type HomeStackParamList = {
   Home: undefined;
-  Scanner: { cameraMode?: string } | undefined;
+  Scanner: { cameraMode?: string; skipReady?: boolean } | undefined;
   Chatbot: undefined;
   Results: { scanId: string };
   DREM: { scanId: string };

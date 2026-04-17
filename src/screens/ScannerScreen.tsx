@@ -13,8 +13,8 @@ import {
   Alert,
   ScrollView,
 } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
-import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { useNavigation, useRoute } from '@react-navigation/native';
+import type { NativeStackNavigationProp, RouteProp } from '@react-navigation/native-stack';
 import {
   Camera,
   useCameraDevice,
@@ -260,10 +260,15 @@ const PermissionDenied: React.FC<{ onRetry: () => void }> = ({ onRetry }) => (
 // ─── Scanner Screen ────────────────────────────────────
 type ScanPhase = 'ready' | 'face-capture' | 'eye-capture' | 'processing' | 'done';
 
+type ScannerRouteProp = RouteProp<HomeStackParamList, 'Scanner'>;
+
 export const ScannerScreen: React.FC = () => {
   const navigation = useNavigation<NavProp>();
+  const route = useRoute<ScannerRouteProp>();
+  const skipReady = route.params?.skipReady ?? false;
   const { runScan } = useAppStore();
-  const [phase, setPhase] = useState<ScanPhase>('ready');
+  // If coming from health questionnaire, go straight to face-capture
+  const [phase, setPhase] = useState<ScanPhase>(skipReady ? 'face-capture' : 'ready');
 
   // Camera permission
   const { hasPermission, requestPermission } = useCameraPermission();
