@@ -575,26 +575,26 @@ export const HomeScreen: React.FC = () => {
         <View style={styles.scanSection}>
           <PulseScanButton
             onPress={() => setHealthCheckVisible(true)}
-            label="Check Scan"
-            sublabel="Questions → Face Scan → Eye Scan"
+            label={t('start_scan')}
+            sublabel={`${t('step_questions')} → ${t('step_face_scan')} → ${t('eye_scan_label')}`}
           />
-          <Text style={styles.scanHint}>Answer 5 quick health questions, then scan</Text>
+          <Text style={styles.scanHint}>{t('scan_hint')}</Text>
 
           {/* Scan flow chips */}
           <View style={styles.scanFlowRow}>
             <View style={styles.scanFlowChip}>
               <Text style={styles.scanFlowIcon}>💬</Text>
-              <Text style={styles.scanFlowLabel}>Questions</Text>
+              <Text style={styles.scanFlowLabel}>{t('step_questions')}</Text>
             </View>
             <Text style={styles.scanFlowArrow}>→</Text>
             <View style={styles.scanFlowChip}>
               <Text style={styles.scanFlowIcon}>📷</Text>
-              <Text style={styles.scanFlowLabel}>Face Scan</Text>
+              <Text style={styles.scanFlowLabel}>{t('step_face_scan')}</Text>
             </View>
             <Text style={styles.scanFlowArrow}>→</Text>
             <View style={[styles.scanFlowChip, { borderColor: Colors.anemia }]}>
               <Text style={styles.scanFlowIcon}>👁️</Text>
-              <Text style={[styles.scanFlowLabel, { color: Colors.anemia }]}>Eye Scan</Text>
+              <Text style={[styles.scanFlowLabel, { color: Colors.anemia }]}>{t('eye_scan_label')}</Text>
             </View>
           </View>
         </View>

@@ -23,6 +23,7 @@ import {
 import { GlassCard, AnimatedButton } from '../components/common';
 import { Colors, Typography, Spacing, BorderRadius } from '../theme';
 import { useAppStore } from '../store/useAppStore';
+import { useLanguage } from '../i18n/LanguageContext';
 import Svg, { Circle } from 'react-native-svg';
 import type { HomeStackParamList } from '../models/types';
 
@@ -267,6 +268,7 @@ export const ScannerScreen: React.FC = () => {
   const route = useRoute<ScannerRouteProp>();
   const skipReady = route.params?.skipReady ?? false;
   const { runScan } = useAppStore();
+  const { t } = useLanguage();
   // If coming from health questionnaire, go straight to face-capture
   const [phase, setPhase] = useState<ScanPhase>(skipReady ? 'face-capture' : 'ready');
 
@@ -389,27 +391,27 @@ export const ScannerScreen: React.FC = () => {
             {/* Face guide overlay */}
             <View style={styles.faceGuideOverlay}>
               <View style={styles.faceOval} />
-              <Text style={styles.guideText}>Position your face here</Text>
+              <Text style={styles.guideText}>{t('scan_instruction')}</Text>
             </View>
           </View>
 
           {/* Normal Mode Instructions */}
           <GlassCard style={styles.instructionCard}>
             <Text style={[styles.instructionTitle, { color: Colors.primary }]}>
-              📷 Normal Mode Instructions
+              📷 {t('start_face_scan')}
             </Text>
             <View style={styles.instructionList}>
-              <Text style={styles.instruction}>1️⃣  Hold your phone at arm's length</Text>
-              <Text style={styles.instruction}>2️⃣  Ensure good lighting on your face</Text>
-              <Text style={styles.instruction}>3️⃣  Stay still during the 10-second capture</Text>
-              <Text style={styles.instruction}>4️⃣  Then capture a close-up of your eye</Text>
+              <Text style={styles.instruction}>1️⃣  {t('hold_steady')}</Text>
+              <Text style={styles.instruction}>2️⃣  {t('scan_instruction')}</Text>
+              <Text style={styles.instruction}>3️⃣  {t('scanning')} 10s</Text>
+              <Text style={styles.instruction}>4️⃣  {t('eye_scan_label')}</Text>
             </View>
           </GlassCard>
 
-          {/* Inline CTA — directly below instruction card */}
+          {/* Inline CTA */}
           <View style={styles.ctaArea}>
             <AnimatedButton
-              title="▶  Begin Normal Scan"
+              title={`▶  ${t('start_scan')}`}
               onPress={handleStartCapture}
               variant="primary"
               size="large"
@@ -417,7 +419,7 @@ export const ScannerScreen: React.FC = () => {
               style={styles.beginButton}
             />
             <Text style={styles.disclaimer}>
-              ⚡ All processing happens on your device — no data leaves your phone
+              ⚡ {t('privacy_note')}
             </Text>
           </View>
         </ScrollView>
@@ -425,7 +427,7 @@ export const ScannerScreen: React.FC = () => {
     );
   }
 
-  // ─── Face Capture Phase ──────────
+  // ─── Face Capture Phase ──────────────
   if (phase === 'face-capture') {
     return (
       <View style={styles.container}>
@@ -460,7 +462,7 @@ export const ScannerScreen: React.FC = () => {
               <CountdownRing
                 duration={10}
                 onComplete={handleFaceCaptureComplete}
-                label="Hold still"
+                label={t('hold_steady')}
                 color={Colors.primary}
               />
             </View>
@@ -468,14 +470,14 @@ export const ScannerScreen: React.FC = () => {
 
           <GlassCard style={styles.phaseCard}>
             <Text style={[styles.phaseTitle, { color: Colors.primary }]}>
-              Phase 1: Facial Analysis
+              {t('step_face_scan')}
             </Text>
             <Text style={styles.phaseDesc}>
-              Capturing rPPG signal for heart rate, HRV, and blood pressure estimation
+              {t('step_face_scan_desc')}
             </Text>
             <View style={styles.liveIndicator}>
               <View style={[styles.liveDot, { backgroundColor: Colors.primary }]} />
-              <Text style={[styles.liveText, { color: Colors.primary }]}>LIVE SCANNING</Text>
+              <Text style={[styles.liveText, { color: Colors.primary }]}>{t('scanning').toUpperCase()}</Text>
             </View>
           </GlassCard>
         </View>
@@ -505,21 +507,21 @@ export const ScannerScreen: React.FC = () => {
             />
             <View style={styles.eyeGuideOverlay}>
               <View style={styles.eyeOval} />
-              <Text style={styles.eyeLabel}>Position your eye here</Text>
-              <Text style={styles.eyeHint}>Pull down lower eyelid gently</Text>
+              <Text style={styles.eyeLabel}>{t('eye_scan_label')}</Text>
+              <Text style={styles.eyeHint}>{t('hold_steady')}</Text>
             </View>
           </Animated.View>
 
           <GlassCard style={styles.phaseCard}>
             <Text style={[styles.phaseTitle, { color: Colors.anemia }]}>
-              Phase 2: Eye Analysis
+              {t('step_ai_analysis')}
             </Text>
             <Text style={styles.phaseDesc}>
-              Capture a close-up of your lower eyelid conjunctiva for anemia screening
+              {t('step_questions_desc')}
             </Text>
             <View style={styles.liveIndicator}>
               <View style={[styles.liveDot, { backgroundColor: Colors.anemia }]} />
-              <Text style={[styles.liveText, { color: Colors.anemia }]}>CAMERA ACTIVE</Text>
+              <Text style={[styles.liveText, { color: Colors.anemia }]}>{t('scan_complete').toUpperCase()}</Text>
             </View>
           </GlassCard>
         </View>
@@ -527,7 +529,7 @@ export const ScannerScreen: React.FC = () => {
         {/* Floating capture button at the very bottom */}
         <View style={styles.floatingCTA}>
           <AnimatedButton
-            title="📸  Capture Eye Image"
+            title={`📸  ${t('eye_scan_label')}`}
             onPress={handleEyeCapture}
             variant="primary"
             size="large"
