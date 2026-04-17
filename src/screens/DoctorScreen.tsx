@@ -429,7 +429,14 @@ export const DoctorScreen: React.FC = () => {
   const { currentScan, scanHistory } = useAppStore();
   const { t } = useLanguage();
   const fadeAnim = useRef(new Animated.Value(0)).current;
+  const scrollRef = useRef<ScrollView>(null);
   const [activeTab, setActiveTab] = useState<'doctors' | 'tips' | 'clinics'>('doctors');
+
+  const switchTab = (tab: 'doctors' | 'tips' | 'clinics') => {
+    setActiveTab(tab);
+    // Scroll back to top so content is always visible after tab switch
+    setTimeout(() => scrollRef.current?.scrollTo({ y: 0, animated: false }), 0);
+  };
 
   useEffect(() => {
     Animated.timing(fadeAnim, { toValue: 1, duration: 500, useNativeDriver: true }).start();
@@ -455,7 +462,7 @@ export const DoctorScreen: React.FC = () => {
 
   return (
     <Animated.View style={[styles.container, { opacity: fadeAnim }]}>
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 100 }}>
+      <ScrollView ref={scrollRef} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 100 }}>
         {/* Header */}
         <View style={styles.header}>
           <Text style={styles.headerTitle}>{t('doctor_title')}</Text>
@@ -487,9 +494,9 @@ export const DoctorScreen: React.FC = () => {
 
         {/* Tab pills */}
         <View style={styles.tabRow}>
-          <TabButton label={t('tab_doctor')} icon="👨‍⚕️" tabKey="doctors" activeTab={activeTab} setActiveTab={setActiveTab} />
-          <TabButton label="💡 Tips" icon="💡" tabKey="tips" activeTab={activeTab} setActiveTab={setActiveTab} />
-          <TabButton label="🏥 Clinics" icon="🏥" tabKey="clinics" activeTab={activeTab} setActiveTab={setActiveTab} />
+          <TabButton label={t('tab_doctor')} icon="👨‍⚕️" tabKey="doctors" activeTab={activeTab} setActiveTab={switchTab} />
+          <TabButton label="Tips" icon="💡" tabKey="tips" activeTab={activeTab} setActiveTab={switchTab} />
+          <TabButton label="Clinics" icon="🏥" tabKey="clinics" activeTab={activeTab} setActiveTab={switchTab} />
         </View>
 
         {/* Doctors Tab */}
