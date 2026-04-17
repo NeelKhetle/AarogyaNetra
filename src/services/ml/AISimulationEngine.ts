@@ -24,8 +24,6 @@ import {
   DietRecommendation,
   FamilyHealthHistory,
   CameraMode,
-  ThermalScanData,
-  TemperatureZone,
 } from '../../models/types';
 
 // ─── Per-User + Per-Scan Seeded Random ──────────────────
@@ -737,116 +735,6 @@ function getExerciseAdvice(
   return '30-45 minutes of moderate exercise daily — brisk walking, cycling, yoga, or swimming. Include 2 sessions of strength training per week.';
 }
 
-// ─── Thermal Blood Flow Simulation ─────────────────
-/**
- * Simulates thermal imaging data for blood flow visualization.
- * All temperatures are ALWAYS POSITIVE (°C).
- * Cold extremity index uses a positive scale (higher = warmer/better).
- */
-function generateThermalData(
-  profile: UserProfile,
-  rppg: { heartRate: number; systolic: number; diastolic: number },
-  conjunctiva: { hemoglobin: number },
-): ThermalScanData {
-  const { age, gender } = profile;
-
-  // Base skin temperature varies by zone — ALL POSITIVE VALUES
-  const baseTemp = gender === 'female' ? 36.3 : 36.5;
-  const ageOffset = age > 60 ? -0.3 : age > 45 ? -0.15 : 0;
-
-  // Blood flow correlates with hemoglobin and heart rate
-  const hbFactor = clamp(conjunctiva.hemoglobin / 14.0, 0.6, 1.0);
-  const hrFactor = clamp(rppg.heartRate / 80, 0.8, 1.2);
-  const bpFactor = clamp(rppg.systolic / 120, 0.85, 1.15);
-
-  // Temperature zones — ALL POSITIVE (Celsius)
-  const zones: TemperatureZone[] = [
-    {
-      name: 'Forehead',
-      temperature: parseFloat(clamp(baseTemp + 0.2 + ageOffset + gaussianRandom(0, 0.1), 34.0, 38.0).toFixed(1)),
-      bloodFlowIndex: parseFloat(clamp(0.75 * hbFactor * hrFactor + gaussianRandom(0, 0.03), 0.3, 1.0).toFixed(2)),
-      color: '#FF4444',
-    },
-    {
-      name: 'Left Cheek',
-      temperature: parseFloat(clamp(baseTemp - 0.4 + ageOffset + gaussianRandom(0, 0.15), 33.5, 37.5).toFixed(1)),
-      bloodFlowIndex: parseFloat(clamp(0.7 * hbFactor * hrFactor + gaussianRandom(0, 0.04), 0.25, 1.0).toFixed(2)),
-      color: '#FF6B00',
-    },
-    {
-      name: 'Right Cheek',
-      temperature: parseFloat(clamp(baseTemp - 0.35 + ageOffset + gaussianRandom(0, 0.15), 33.5, 37.5).toFixed(1)),
-      bloodFlowIndex: parseFloat(clamp(0.72 * hbFactor * hrFactor + gaussianRandom(0, 0.04), 0.25, 1.0).toFixed(2)),
-      color: '#FF7722',
-    },
-    {
-      name: 'Nose',
-      temperature: parseFloat(clamp(baseTemp - 1.8 + ageOffset + gaussianRandom(0, 0.2), 32.0, 36.5).toFixed(1)),
-      bloodFlowIndex: parseFloat(clamp(0.55 * hbFactor + gaussianRandom(0, 0.05), 0.2, 0.9).toFixed(2)),
-      color: '#FFAA00',
-    },
-    {
-      name: 'Chin',
-      temperature: parseFloat(clamp(baseTemp - 1.2 + ageOffset + gaussianRandom(0, 0.15), 33.0, 37.0).toFixed(1)),
-      bloodFlowIndex: parseFloat(clamp(0.6 * hbFactor * hrFactor + gaussianRandom(0, 0.04), 0.2, 0.95).toFixed(2)),
-      color: '#FFCC00',
-    },
-    {
-      name: 'Left Temple',
-      temperature: parseFloat(clamp(baseTemp + 0.1 + ageOffset + gaussianRandom(0, 0.1), 34.0, 37.8).toFixed(1)),
-      bloodFlowIndex: parseFloat(clamp(0.8 * hbFactor * bpFactor + gaussianRandom(0, 0.03), 0.4, 1.0).toFixed(2)),
-      color: '#FF3333',
-    },
-    {
-      name: 'Right Temple',
-      temperature: parseFloat(clamp(baseTemp + 0.08 + ageOffset + gaussianRandom(0, 0.1), 34.0, 37.8).toFixed(1)),
-      bloodFlowIndex: parseFloat(clamp(0.78 * hbFactor * bpFactor + gaussianRandom(0, 0.03), 0.4, 1.0).toFixed(2)),
-      color: '#FF3355',
-    },
-    {
-      name: 'Neck / Carotid',
-      temperature: parseFloat(clamp(baseTemp + 0.3 + ageOffset + gaussianRandom(0, 0.1), 34.5, 38.2).toFixed(1)),
-      bloodFlowIndex: parseFloat(clamp(0.85 * hbFactor * bpFactor + gaussianRandom(0, 0.02), 0.5, 1.0).toFixed(2)),
-      color: '#FF2222',
-    },
-  ];
-
-  // Average skin temperature (always positive)
-  const avgTemp = parseFloat(
-    (zones.reduce((sum, z) => sum + z.temperature, 0) / zones.length).toFixed(1)
-  );
-
-  // Core body temp estimate (always positive, always >= skin temp)
-  const coreTemp = parseFloat(
-    clamp(avgTemp + 0.8 + gaussianRandom(0, 0.1), 36.0, 38.5).toFixed(1)
-  );
-
-  // Blood flow score (0–100, always positive)
-  const avgFlowIdx = zones.reduce((sum, z) => sum + z.bloodFlowIndex, 0) / zones.length;
-  const bloodFlowScore = Math.round(clamp(avgFlowIdx * 100, 10, 100));
-
-  // Peripheral circulation assessment
-  // Cold extremity index: positive scale (0 = cold, 1 = warm/good)
-  const coldExtremityIndex = parseFloat(
-    clamp(hbFactor * hrFactor * 0.9 + gaussianRandom(0, 0.05), 0.1, 1.0).toFixed(2)
-  );
-
-  let peripheralCirculation: 'good' | 'moderate' | 'poor';
-  if (coldExtremityIndex >= 0.7) peripheralCirculation = 'good';
-  else if (coldExtremityIndex >= 0.4) peripheralCirculation = 'moderate';
-  else peripheralCirculation = 'poor';
-
-  return {
-    zones,
-    averageSkinTemp: avgTemp,
-    coreBodyTempEstimate: coreTemp,
-    bloodFlowScore,
-    peripheralCirculation,
-    coldExtremityIndex,
-    capturedAt: new Date().toISOString(),
-  };
-}
-
 // ─── Main Scan Function ───────────────────────────────
 /**
  * Run a complete health scan.
@@ -924,10 +812,7 @@ export function runScanSimulation(
   // Phase 9: Generate diet plan
   const dietPlan = generateDietPlan(hypertension, diabetes, anemia, profile, scanId);
 
-  // Phase 10: Generate thermal data if thermal camera mode
-  const thermalData = (cameraMode === 'thermal')
-    ? generateThermalData(profile, rppg, conjunctiva)
-    : undefined;
+  // Thermal mode removed — only 'normal' camera is supported
 
   return {
     scanId,
@@ -945,6 +830,5 @@ export function runScanSimulation(
     synced: false,
     usedLabData,
     cameraMode: cameraMode || 'normal',
-    thermalData,
   };
 }

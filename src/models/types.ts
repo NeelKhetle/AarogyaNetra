@@ -24,24 +24,6 @@ export const CAMERA_MODES: CameraModeInfo[] = [
   },
 ];
 
-// ─── Thermal Scan Data ───────────────────────────────
-export interface TemperatureZone {
-  name: string;
-  temperature: number;  // Always positive (°C)
-  bloodFlowIndex: number; // 0–1 (0 = low flow, 1 = high flow)
-  color: string;
-}
-
-export interface ThermalScanData {
-  zones: TemperatureZone[];
-  averageSkinTemp: number;     // Always positive °C
-  coreBodyTempEstimate: number; // Always positive °C
-  bloodFlowScore: number;       // 0–100
-  peripheralCirculation: 'good' | 'moderate' | 'poor';
-  coldExtremityIndex: number;   // 0–1, higher = warmer (positive scale)
-  capturedAt: string;
-}
-
 // ─── User Profile ────────────────────────────────────
 export interface UserProfile {
   id: string;
@@ -228,7 +210,6 @@ export interface ScanResult {
   synced: boolean;
   usedLabData: boolean;       // Whether lab data influenced this scan
   cameraMode?: CameraMode;    // Which camera mode was used
-  thermalData?: ThermalScanData; // Thermal scan data if thermal mode
 }
 
 // ─── DREM Trajectory ─────────────────────────────────

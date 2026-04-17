@@ -635,84 +635,136 @@ const styles = StyleSheet.create({
   actionBtn: {
     borderRadius: BorderRadius.md,
   },
-  // Thermal data
-  thermalCard: {
-    marginHorizontal: Spacing.lg,
-    marginTop: Spacing.md,
-  },
-  thermalTitle: {
-    ...Typography.h4,
-    color: Colors.textPrimary,
-    marginBottom: Spacing.md,
-  },
-  thermalStatsRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    marginBottom: Spacing.md,
-  },
-  thermalStat: {
-    alignItems: 'center',
-  },
-  thermalStatValue: {
-    ...Typography.h3,
-    color: Colors.hypertension,
-  },
-  thermalStatLabel: {
-    ...Typography.caption,
-    color: Colors.textTertiary,
-    marginTop: 2,
-  },
-  thermalInfoRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: Spacing.xs,
-    gap: Spacing.sm,
-  },
-  thermalInfoLabel: {
-    ...Typography.caption,
-    color: Colors.textSecondary,
-    width: 80,
-  },
-  thermalInfoValue: {
-    ...Typography.caption,
-    color: Colors.textPrimary,
-    fontWeight: '700',
-  },
-  thermalWarmthBar: {
-    flex: 1,
-    height: 6,
-    backgroundColor: Colors.surfaceBorder,
-    borderRadius: 3,
-    overflow: 'hidden',
-  },
-  thermalWarmthFill: {
-    height: '100%',
-    borderRadius: 3,
-  },
-  thermalZoneRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: Spacing.xs,
-    gap: Spacing.sm,
-  },
-  thermalZoneDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-  },
-  thermalZoneName: {
-    ...Typography.caption,
-    color: Colors.textSecondary,
-    flex: 1,
-  },
-  thermalZoneTemp: {
-    ...Typography.caption,
-    color: Colors.textPrimary,
-    fontWeight: '600',
-  },
   // XAI Sections
   xaiCard: {
     marginHorizontal: Spacing.lg,
+  },
+  xaiCardTitle: {
+    ...Typography.h4,
+    color: Colors.textPrimary,
+    marginBottom: Spacing.lg,
+  },
+  // Signal quality rows
+  signalRow: {
+    marginBottom: Spacing.md,
+  },
+  signalLabelRow: {
+    flexDirection: 'row' as const,
+    justifyContent: 'space-between' as const,
+    marginBottom: 4,
+  },
+  signalLabel: {
+    ...Typography.bodySmall,
+    color: Colors.textSecondary,
+  },
+  signalQual: {
+    ...Typography.label,
+    fontWeight: '700' as const,
+  },
+  signalTrack: {
+    height: 7,
+    backgroundColor: Colors.surfaceContainerLow,
+    borderRadius: 4,
+    overflow: 'hidden' as const,
+  },
+  signalFill: {
+    height: 7,
+    borderRadius: 4,
+  },
+  // Disease factor blocks
+  diseaseFactorBlock: {
+    borderRadius: 12,
+    overflow: 'hidden' as const,
+    borderWidth: 1,
+    borderColor: Colors.surfaceBorder,
+  },
+  diseaseFactorHeader: {
+    flexDirection: 'row' as const,
+    justifyContent: 'space-between' as const,
+    alignItems: 'center' as const,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+  },
+  diseaseFactorTitle: {
+    ...Typography.label,
+    fontWeight: '800' as const,
+  },
+  diseaseFactorScore: {
+    ...Typography.label,
+    fontWeight: '700' as const,
+  },
+  factorRow: {
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    gap: 10,
+    borderTopWidth: 1,
+    borderTopColor: Colors.surfaceBorder,
+  },
+  factorLeft: {
+    flex: 1,
+  },
+  factorName: {
+    ...Typography.bodySmall,
+    fontWeight: '700' as const,
+    color: Colors.textPrimary,
+    marginBottom: 2,
+  },
+  factorDesc: {
+    ...Typography.caption,
+    color: Colors.textTertiary,
+  },
+  factorBarWrap: {
+    width: 80,
+    alignItems: 'flex-end' as const,
+    gap: 3,
+  },
+  factorBar: {
+    width: '100%',
+    height: 5,
+    borderRadius: 3,
+  },
+  factorPct: {
+    ...Typography.caption,
+    fontWeight: '700' as const,
+  },
+  // Reasoning chain
+  reasonStep: {
+    flexDirection: 'row' as const,
+    alignItems: 'flex-start' as const,
+    gap: 12,
+    marginBottom: Spacing.md,
+  },
+  reasonStepNum: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
+    flexShrink: 0,
+  },
+  reasonStepNumText: {
+    fontSize: 13,
+    fontWeight: '800' as const,
+    color: '#fff',
+  },
+  reasonStepTitle: {
+    ...Typography.label,
+    fontWeight: '700' as const,
+    marginBottom: 3,
+  },
+  reasonStepDesc: {
+    ...Typography.bodySmall,
+    color: Colors.textSecondary,
+    lineHeight: 18,
+  },
+  // Transparency row border
+  transRowBorder: {
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.surfaceBorder,
+    paddingBottom: 8,
+    marginBottom: 8,
   },
   weightRow: {
     marginBottom: 14,
