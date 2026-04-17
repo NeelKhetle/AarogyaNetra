@@ -405,6 +405,25 @@ const tipStyles = StyleSheet.create({
   tipFooterText: { fontSize: 10, fontWeight: '600' },
 });
 
+// ─── Tab Button — defined OUTSIDE parent to avoid remount on state change ─────
+const TabButton: React.FC<{
+  label: string;
+  icon: string;
+  tabKey: 'doctors' | 'tips' | 'clinics';
+  activeTab: 'doctors' | 'tips' | 'clinics';
+  setActiveTab: (tab: 'doctors' | 'tips' | 'clinics') => void;
+}> = ({ label, icon, tabKey, activeTab, setActiveTab }) => (
+  <TouchableOpacity
+    style={[tabBtnStyles.btn, activeTab === tabKey && tabBtnStyles.active]}
+    onPress={() => setActiveTab(tabKey)}
+    activeOpacity={0.7}
+  >
+    <Text style={{ fontSize: 16 }}>{icon}</Text>
+    <Text style={[tabBtnStyles.label, activeTab === tabKey && tabBtnStyles.labelActive]}>{label}</Text>
+  </TouchableOpacity>
+);
+
+
 // ─── Main Screen ──────────────────────────────────────
 export const DoctorScreen: React.FC = () => {
   const { currentScan, scanHistory } = useAppStore();
@@ -433,17 +452,6 @@ export const DoctorScreen: React.FC = () => {
   };
 
   const recommended = getRecommendedDoctors();
-
-  const TabButton: React.FC<{ label: string; icon: string; tabKey: typeof activeTab }> = ({ label, icon, tabKey }) => (
-    <TouchableOpacity
-      style={[tabBtnStyles.btn, activeTab === tabKey && tabBtnStyles.active]}
-      onPress={() => setActiveTab(tabKey)}
-      activeOpacity={0.7}
-    >
-      <Text style={{ fontSize: 16 }}>{icon}</Text>
-      <Text style={[tabBtnStyles.label, activeTab === tabKey && tabBtnStyles.labelActive]}>{label}</Text>
-    </TouchableOpacity>
-  );
 
   return (
     <Animated.View style={[styles.container, { opacity: fadeAnim }]}>
@@ -479,9 +487,9 @@ export const DoctorScreen: React.FC = () => {
 
         {/* Tab pills */}
         <View style={styles.tabRow}>
-          <TabButton label={t('tab_doctor')} icon="👨‍⚕️" tabKey="doctors" />
-          <TabButton label="💡 Tips" icon="💡" tabKey="tips" />
-          <TabButton label="🏥 Clinics" icon="🏥" tabKey="clinics" />
+          <TabButton label={t('tab_doctor')} icon="👨‍⚕️" tabKey="doctors" activeTab={activeTab} setActiveTab={setActiveTab} />
+          <TabButton label="💡 Tips" icon="💡" tabKey="tips" activeTab={activeTab} setActiveTab={setActiveTab} />
+          <TabButton label="🏥 Clinics" icon="🏥" tabKey="clinics" activeTab={activeTab} setActiveTab={setActiveTab} />
         </View>
 
         {/* Doctors Tab */}
