@@ -18,6 +18,7 @@ import {
 } from 'react-native';
 import { Colors } from '../theme';
 import { useAppStore } from '../store/useAppStore';
+import { useLanguage } from '../i18n/LanguageContext';
 
 const { width } = Dimensions.get('window');
 
@@ -173,14 +174,15 @@ const StarRating: React.FC<{ rating: number }> = ({ rating }) => {
 
 const DoctorCard: React.FC<{ doctor: Doctor; isRecommended: boolean }> = ({ doctor, isRecommended }) => {
   const scale = useRef(new Animated.Value(1)).current;
+  const { t } = useLanguage();
 
   const handleCall = () => {
     Alert.alert(
-      `Call ${doctor.name}`,
-      `Dial ${doctor.phone}?`,
+      `${t('call_doctor')}: ${doctor.name}`,
+      `${doctor.phone}?`,
       [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Call', onPress: () => Linking.openURL(`tel:${doctor.phone}`) },
+        { text: t('cancel') || 'Cancel', style: 'cancel' },
+        { text: t('call_doctor') || 'Call', onPress: () => Linking.openURL(`tel:${doctor.phone}`) },
       ]
     );
   };
@@ -198,7 +200,7 @@ const DoctorCard: React.FC<{ doctor: Doctor; isRecommended: boolean }> = ({ doct
       >
         {isRecommended && (
           <View style={docStyles.recommendedBadge}>
-            <Text style={docStyles.recommendedText}>⭐ Recommended for You</Text>
+            <Text style={docStyles.recommendedText}>⭐ {t('specialist')}</Text>
           </View>
         )}
         <View style={docStyles.header}>
@@ -213,7 +215,7 @@ const DoctorCard: React.FC<{ doctor: Doctor; isRecommended: boolean }> = ({ doct
           <View style={[docStyles.availBadge, { backgroundColor: doctor.available ? Colors.successLight : '#fee2e2' }]}>
             <View style={[docStyles.availDot, { backgroundColor: doctor.available ? Colors.success : Colors.danger }]} />
             <Text style={[docStyles.availText, { color: doctor.available ? Colors.success : Colors.danger }]}>
-              {doctor.available ? 'Available' : 'Busy'}
+              {doctor.available ? t('available') : t('busy')}
             </Text>
           </View>
         </View>
@@ -240,7 +242,7 @@ const DoctorCard: React.FC<{ doctor: Doctor; isRecommended: boolean }> = ({ doct
 
         <View style={docStyles.actions}>
           <TouchableOpacity style={docStyles.callBtn} onPress={handleCall} activeOpacity={0.8}>
-            <Text style={docStyles.callBtnText}>📞 Book Appointment</Text>
+            <Text style={docStyles.callBtnText}>📞 {t('book_appointment')}</Text>
           </TouchableOpacity>
         </View>
       </TouchableOpacity>
@@ -299,14 +301,34 @@ const docStyles = StyleSheet.create({
 
 const TipCard: React.FC<{ tip: HealthTip; index: number }> = ({ tip, index }) => {
   const [expanded, setExpanded] = useState(false);
+  const heightAnim = useRef(new Animated.Value(0)).current;
+  const opacityAnim = useRef(new Animated.Value(0)).current;
+
+  const toggle = () => {
+    const toExpand = !expanded;
+    setExpanded(toExpand);
+    Animated.parallel([
+      Animated.timing(heightAnim, {
+        toValue: toExpand ? 1 : 0,
+        duration: 250,
+        useNativeDriver: false,
+      }),
+      Animated.timing(opacityAnim, {
+        toValue: toExpand ? 1 : 0,
+        duration: 200,
+        useNativeDriver: false,
+      }),
+    ]).start();
+  };
+
   return (
     <TouchableOpacity
       style={tipStyles.card}
-      onPress={() => setExpanded(!expanded)}
+      onPress={toggle}
       activeOpacity={0.85}
     >
       <View style={tipStyles.header}>
-        <View style={tipStyles.iconWrap}>
+        <View style={[tipStyles.iconWrap, { backgroundColor: `${tip.tagColor}15` }]}>
           <Text style={{ fontSize: 24 }}>{tip.icon}</Text>
         </View>
         <View style={{ flex: 1 }}>
@@ -315,27 +337,78 @@ const TipCard: React.FC<{ tip: HealthTip; index: number }> = ({ tip, index }) =>
             <Text style={[tipStyles.tagText, { color: tip.tagColor }]}>{tip.tag}</Text>
           </View>
         </View>
-        <Text style={tipStyles.chevron}>{expanded ? '▲' : '▼'}</Text>
+        <View style={[tipStyles.chevronBox, expanded && { backgroundColor: Colors.primary }]}>
+          <Text style={[tipStyles.chevron, expanded && { color: '#fff' }]}>
+            {expanded ? '▲' : '▼'}
+          </Text>
+        </View>
       </View>
-      {expanded && <Text style={tipStyles.body}>{tip.body}</Text>}
+      {expanded && (
+        <Animated.View style={{ opacity: opacityAnim }}>
+          <Text style={tipStyles.body}>{tip.body}</Text>
+          <View style={tipStyles.tipFooter}>
+            <Text style={[tipStyles.tipFooterText, { color: tip.tagColor }]}>
+              💡 Tip #{index + 1} · Tap to collapse
+            </Text>
+          </View>
+        </Animated.View>
+      )}
     </TouchableOpacity>
   );
 };
 
 const tipStyles = StyleSheet.create({
-  card: { backgroundColor: '#fff', borderRadius: 16, padding: 16, marginHorizontal: 20, marginBottom: 10, borderWidth: 1, borderColor: Colors.surfaceBorder },
+  card: {
+    backgroundColor: '#fff',
+    borderRadius: 18,
+    padding: 16,
+    marginHorizontal: 20,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: Colors.surfaceBorder,
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+  },
   header: { flexDirection: 'row', gap: 12, alignItems: 'center' },
-  iconWrap: { width: 46, height: 46, borderRadius: 14, backgroundColor: Colors.surfaceContainerLow, alignItems: 'center', justifyContent: 'center' },
+  iconWrap: {
+    width: 48,
+    height: 48,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   title: { fontSize: 14, fontWeight: '700', color: Colors.textPrimary, marginBottom: 4 },
   tagBadge: { borderRadius: 999, paddingHorizontal: 8, paddingVertical: 2, alignSelf: 'flex-start' },
   tagText: { fontSize: 10, fontWeight: '700' },
-  chevron: { fontSize: 12, color: Colors.textTertiary },
-  body: { fontSize: 13, color: Colors.textSecondary, lineHeight: 20, marginTop: 12, paddingTop: 12, borderTopWidth: 1, borderTopColor: Colors.surfaceBorder },
+  chevronBox: {
+    width: 28,
+    height: 28,
+    borderRadius: 8,
+    backgroundColor: Colors.surfaceContainerLow,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  chevron: { fontSize: 11, color: Colors.textTertiary, fontWeight: '700' },
+  body: {
+    fontSize: 13,
+    color: Colors.textSecondary,
+    lineHeight: 21,
+    marginTop: 14,
+    paddingTop: 14,
+    borderTopWidth: 1,
+    borderTopColor: Colors.surfaceBorder,
+  },
+  tipFooter: { marginTop: 10, alignItems: 'flex-end' },
+  tipFooterText: { fontSize: 10, fontWeight: '600' },
 });
 
 // ─── Main Screen ──────────────────────────────────────
 export const DoctorScreen: React.FC = () => {
   const { currentScan, scanHistory } = useAppStore();
+  const { t } = useLanguage();
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const [activeTab, setActiveTab] = useState<'doctors' | 'tips' | 'clinics'>('doctors');
 
@@ -361,14 +434,14 @@ export const DoctorScreen: React.FC = () => {
 
   const recommended = getRecommendedDoctors();
 
-  const TabButton: React.FC<{ label: string; icon: string; key: typeof activeTab }> = ({ label, icon, key }) => (
+  const TabButton: React.FC<{ label: string; icon: string; tabKey: typeof activeTab }> = ({ label, icon, tabKey }) => (
     <TouchableOpacity
-      style={[tabBtnStyles.btn, activeTab === key && tabBtnStyles.active]}
-      onPress={() => setActiveTab(key)}
+      style={[tabBtnStyles.btn, activeTab === tabKey && tabBtnStyles.active]}
+      onPress={() => setActiveTab(tabKey)}
       activeOpacity={0.7}
     >
       <Text style={{ fontSize: 16 }}>{icon}</Text>
-      <Text style={[tabBtnStyles.label, activeTab === key && tabBtnStyles.labelActive]}>{label}</Text>
+      <Text style={[tabBtnStyles.label, activeTab === tabKey && tabBtnStyles.labelActive]}>{label}</Text>
     </TouchableOpacity>
   );
 
@@ -377,8 +450,8 @@ export const DoctorScreen: React.FC = () => {
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 100 }}>
         {/* Header */}
         <View style={styles.header}>
-          <Text style={styles.headerTitle}>Doctor & Health Hub</Text>
-          <Text style={styles.headerSub}>Guidance based on your last scan results</Text>
+          <Text style={styles.headerTitle}>{t('doctor_title')}</Text>
+          <Text style={styles.headerSub}>{t('doctor_subtitle')}</Text>
         </View>
 
         {/* Banner — if scan exists */}
@@ -386,9 +459,9 @@ export const DoctorScreen: React.FC = () => {
           <View style={styles.resultBanner}>
             <Text style={styles.bannerIcon}>🩺</Text>
             <View style={{ flex: 1 }}>
-              <Text style={styles.bannerTitle}>Based on Your Last Scan</Text>
+              <Text style={styles.bannerTitle}>{t('last_scan_results')}</Text>
               <Text style={styles.bannerDesc}>
-                Overall score: {currentScan.overallHealthScore}/100 — See specialists listed below
+                {t('overall_score')}: {currentScan.overallHealthScore}/100
               </Text>
             </View>
           </View>
@@ -397,24 +470,24 @@ export const DoctorScreen: React.FC = () => {
         {!currentScan && scanHistory.length === 0 && (
           <View style={styles.noScanBanner}>
             <Text style={styles.noScanIcon}>📋</Text>
-            <Text style={styles.noScanTitle}>No Scan Yet</Text>
+            <Text style={styles.noScanTitle}>{t('no_scans_yet')}</Text>
             <Text style={styles.noScanDesc}>
-              Complete a health scan from the Home tab to get personalised doctor recommendations.
+              {t('no_scans_desc')}
             </Text>
           </View>
         )}
 
         {/* Tab pills */}
         <View style={styles.tabRow}>
-          <TabButton label="Doctors" icon="👨‍⚕️" key="doctors" />
-          <TabButton label="Tips" icon="💡" key="tips" />
-          <TabButton label="Clinics" icon="🏥" key="clinics" />
+          <TabButton label={t('tab_doctor')} icon="👨‍⚕️" tabKey="doctors" />
+          <TabButton label="💡 Tips" icon="💡" tabKey="tips" />
+          <TabButton label="🏥 Clinics" icon="🏥" tabKey="clinics" />
         </View>
 
         {/* Doctors Tab */}
         {activeTab === 'doctors' && (
           <>
-            <Text style={styles.sectionTitle}>Recommended Specialists</Text>
+            <Text style={styles.sectionTitle}>{t('specialist')}</Text>
             {recommended.map((doc, idx) => (
               <DoctorCard
                 key={doc.id}
@@ -487,7 +560,7 @@ export const DoctorScreen: React.FC = () => {
         {/* Disclaimer */}
         <View style={styles.disclaimer}>
           <Text style={styles.disclaimerText}>
-            ⚠️ This app is a screening tool only. Always consult a qualified doctor for medical decisions.
+            ⚠️ {t('footer_disclaimer')}. {t('consult_now')}.
           </Text>
         </View>
       </ScrollView>

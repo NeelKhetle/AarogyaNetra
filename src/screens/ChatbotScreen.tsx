@@ -1100,6 +1100,70 @@ const styles = StyleSheet.create({
   },
 });
 
+// ─── Camera Mode Selection Styles ─────────────────────
+const camSelectStyles = StyleSheet.create({
+  title: {
+    ...Typography.h4,
+    color: Colors.textSecondary,
+    marginTop: Spacing.xxl,
+    marginBottom: Spacing.lg,
+    textAlign: 'center',
+  },
+  modeCard: {
+    borderRadius: BorderRadius.lg,
+    borderWidth: 1.5,
+    backgroundColor: Colors.surface,
+    padding: Spacing.lg,
+    marginBottom: Spacing.md,
+  },
+  modeHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.md,
+  },
+  modeIcon: {
+    fontSize: 32,
+  },
+  modeLabel: {
+    ...Typography.h4,
+    color: Colors.textPrimary,
+  },
+  modeDesc: {
+    ...Typography.caption,
+    color: Colors.textTertiary,
+    marginTop: 2,
+  },
+  activeCheck: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  thermalInfo: {
+    marginTop: Spacing.sm,
+    paddingTop: Spacing.sm,
+    borderTopWidth: 1,
+    borderTopColor: Colors.surfaceBorder,
+  },
+  thermalInfoText: {
+    ...Typography.bodySmall,
+    color: Colors.textSecondary,
+    fontStyle: 'italic',
+  },
+  beginBtn: {
+    borderRadius: BorderRadius.xl,
+    paddingVertical: 18,
+    alignItems: 'center',
+    marginTop: Spacing.lg,
+    marginBottom: Spacing.md,
+  },
+  beginBtnText: {
+    ...Typography.button,
+    color: '#fff',
+    fontSize: 16,
+  },
+});
 
 // ─── Camera Scan Overlay Styles ───────────────────────
 const camScanStyles = StyleSheet.create({
@@ -1107,7 +1171,134 @@ const camScanStyles = StyleSheet.create({
     flex: 1,
     overflow: 'hidden',
   },
-
+  // Thermal filter
+  thermalFilterContainer: {
+    ...StyleSheet.absoluteFill,
+  },
+  thermalRedTint: {
+    ...StyleSheet.absoluteFill,
+    backgroundColor: 'rgba(255, 30, 0, 0.18)',
+  },
+  heatZone: {
+    position: 'absolute',
+  },
+  bloodPulse: {
+    position: 'absolute',
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: '#FF0000',
+  },
+  thermalBadge: {
+    position: 'absolute',
+    top: 12,
+    left: 12,
+    backgroundColor: 'rgba(255, 68, 68, 0.25)',
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 68, 68, 0.5)',
+  },
+  thermalBadgeText: {
+    color: '#FF4444',
+    fontWeight: '700',
+    letterSpacing: 1,
+    fontSize: 9,
+  },
+  scaleBar: {
+    position: 'absolute',
+    bottom: 20,
+    right: 12,
+    width: 16,
+    alignItems: 'center',
+  },
+  scaleGradientHot: {
+    width: 12,
+    height: 25,
+    borderTopLeftRadius: 6,
+    borderTopRightRadius: 6,
+    backgroundColor: '#FF0000',
+  },
+  scaleGradientWarm: {
+    width: 12,
+    height: 25,
+    backgroundColor: '#FF6600',
+  },
+  scaleGradientCool: {
+    width: 12,
+    height: 25,
+    borderBottomLeftRadius: 6,
+    borderBottomRightRadius: 6,
+    backgroundColor: '#FFCC00',
+  },
+  scaleLabels: {
+    position: 'absolute',
+    left: 18,
+    top: 0,
+    height: 75,
+    justifyContent: 'space-between',
+  },
+  scaleText: {
+    fontSize: 8,
+    color: 'rgba(255,255,255,0.8)',
+    fontWeight: '700',
+  },
+  // Night vision filter
+  nightFilterContainer: {
+    ...StyleSheet.absoluteFill,
+  },
+  nightGreenTint: {
+    ...StyleSheet.absoluteFill,
+    backgroundColor: 'rgba(0, 255, 0, 0.1)',
+  },
+  nightScanLine: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    height: 1,
+    backgroundColor: 'rgba(0, 230, 118, 0.15)',
+  },
+  nightEdgeDot: {
+    position: 'absolute',
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    borderWidth: 2,
+    borderColor: '#00E676',
+    backgroundColor: 'rgba(0, 230, 118, 0.3)',
+    marginLeft: -5,
+    marginTop: -5,
+  },
+  nightFaceOutline: {
+    position: 'absolute',
+    top: '15%',
+    left: '20%',
+    width: '60%',
+    height: '60%',
+    borderRadius: 80,
+    borderWidth: 1.5,
+    borderColor: 'rgba(0, 230, 118, 0.5)',
+    borderStyle: 'dashed',
+  },
+  nightBadge: {
+    position: 'absolute',
+    top: 12,
+    left: 12,
+    backgroundColor: 'rgba(0, 230, 118, 0.2)',
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderWidth: 1,
+    borderColor: 'rgba(0, 230, 118, 0.4)',
+  },
+  nightBadgeText: {
+    color: '#00E676',
+    fontWeight: '700',
+    letterSpacing: 1,
+    fontSize: 9,
+  },
+  // Normal mode
   normalOverlay: {
     ...StyleSheet.absoluteFill,
     alignItems: 'center',

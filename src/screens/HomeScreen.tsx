@@ -7,7 +7,7 @@
  *  - Quick access to features
  */
 
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -16,12 +16,16 @@ import {
   TouchableOpacity,
   Animated,
   Dimensions,
+  Modal,
+  FlatList,
+  TextInput,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Colors } from '../theme';
 import { useAppStore } from '../store/useAppStore';
 import { useLanguage } from '../i18n/LanguageContext';
+import { LANGUAGE_LIST } from '../i18n/translations';
 import type { HomeStackParamList, ScanHistoryEntry } from '../models/types';
 
 type NavProp = NativeStackNavigationProp<HomeStackParamList, 'Home'>;
@@ -115,8 +119,9 @@ const RiskBar: React.FC<{ label: string; value: number; color: string; icon: str
     Animated.timing(animWidth, { toValue: value, duration: 900, useNativeDriver: false, delay: 300 }).start();
   }, [value]);
 
+  const { t } = useLanguage();
   const pct = Math.round(value * 100);
-  const level = pct < 30 ? 'Low' : pct < 60 ? 'Moderate' : 'High';
+  const level = pct < 30 ? t('low') : pct < 60 ? t('moderate') : t('high');
   const lvlColor = pct < 30 ? Colors.success : pct < 60 ? Colors.warning : Colors.danger;
 
   return (
@@ -155,8 +160,9 @@ const riskBarStyles = StyleSheet.create({
 
 // ─── Score Ring ───────────────────────────────────────
 const ScoreRing: React.FC<{ score: number }> = ({ score }) => {
+  const { t } = useLanguage();
   const color = score >= 70 ? Colors.success : score >= 45 ? Colors.warning : Colors.danger;
-  const label = score >= 70 ? 'Good' : score >= 45 ? 'Fair' : 'At Risk';
+  const label = score >= 70 ? t('good') : score >= 45 ? t('fair') : t('at_risk');
 
   return (
     <View style={ringStyles.container}>
@@ -261,11 +267,84 @@ const trendStyles = StyleSheet.create({
   trendText: { fontSize: 13, color: Colors.textSecondary, fontWeight: '500' },
 });
 
+// ─── Language Switcher Modal ──────────────────────────
+const LanguageSwitcherModal: React.FC<{ visible: boolean; onClose: () => void }> = ({ visible, onClose }) => {
+  const { language, setLanguage } = useAppStore();
+  const { t } = useLanguage();
+  const [search, setSearch] = useState('');
+  const filtered = LANGUAGE_LIST.filter(l =>
+    l.label.toLowerCase().includes(search.toLowerCase()) ||
+    l.native.toLowerCase().includes(search.toLowerCase())
+  );
+  return (
+    <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
+      <View style={langModalStyles.container}>
+        <View style={langModalStyles.header}>
+          <Text style={langModalStyles.title}>🌐 {t('choose_language')}</Text>
+          <TouchableOpacity onPress={onClose} style={langModalStyles.closeBtn}>
+            <Text style={langModalStyles.closeText}>✕</Text>
+          </TouchableOpacity>
+        </View>
+        <TextInput
+          style={langModalStyles.search}
+          value={search}
+          onChangeText={setSearch}
+          placeholder={t('search_language')}
+          placeholderTextColor={Colors.textTertiary}
+        />
+        <FlatList
+          data={filtered}
+          keyExtractor={item => item.code}
+          showsVerticalScrollIndicator={false}
+          renderItem={({ item: lang }) => {
+            const isActive = language === lang.code;
+            return (
+              <TouchableOpacity
+                style={[langModalStyles.langRow, isActive && langModalStyles.langRowActive]}
+                onPress={() => { setLanguage(lang.code); onClose(); }}
+                activeOpacity={0.75}
+              >
+                <Text style={{ fontSize: 22 }}>{lang.flag}</Text>
+                <View style={{ flex: 1 }}>
+                  <Text style={[langModalStyles.langNative, isActive && { color: Colors.primary }]}>{lang.native}</Text>
+                  <Text style={langModalStyles.langEnglish}>{lang.label}</Text>
+                </View>
+                {isActive && (
+                  <View style={langModalStyles.check}>
+                    <Text style={{ color: '#fff', fontWeight: '800' }}>✓</Text>
+                  </View>
+                )}
+              </TouchableOpacity>
+            );
+          }}
+        />
+      </View>
+    </Modal>
+  );
+};
+
+const langModalStyles = StyleSheet.create({
+  container: { flex: 1, backgroundColor: Colors.background },
+  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 20, paddingTop: 48, borderBottomWidth: 1, borderBottomColor: Colors.surfaceBorder },
+  title: { fontSize: 18, fontWeight: '800', color: Colors.textPrimary },
+  closeBtn: { width: 32, height: 32, borderRadius: 16, backgroundColor: Colors.surfaceContainerLow, alignItems: 'center', justifyContent: 'center' },
+  closeText: { fontSize: 14, fontWeight: '700', color: Colors.textSecondary },
+  search: { margin: 16, backgroundColor: Colors.surfaceContainerLow, borderRadius: 12, paddingHorizontal: 16, paddingVertical: 12, fontSize: 15, color: Colors.textPrimary, borderWidth: 1, borderColor: Colors.surfaceBorder },
+  langRow: { flexDirection: 'row', alignItems: 'center', gap: 14, paddingHorizontal: 20, paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: `${Colors.surfaceBorder}60` },
+  langRowActive: { backgroundColor: `${Colors.primary}08` },
+  langNative: { fontSize: 16, fontWeight: '700', color: Colors.textPrimary },
+  langEnglish: { fontSize: 12, color: Colors.textTertiary, marginTop: 1 },
+  check: { width: 26, height: 26, borderRadius: 13, backgroundColor: Colors.primary, alignItems: 'center', justifyContent: 'center' },
+});
+
 // ─── Main Screen ──────────────────────────────────────
 export const HomeScreen: React.FC = () => {
   const navigation = useNavigation<NavProp>();
-  const { user, scanHistory, currentScan, initializeDefaultUser } = useAppStore();
+  const { user, scanHistory, currentScan, initializeDefaultUser, language } = useAppStore();
   const { t } = useLanguage();
+  const currentLang = LANGUAGE_LIST.find(l => l.code === language) ?? LANGUAGE_LIST.find(l => l.code === 'en')!;
+
+  const [langModalVisible, setLangModalVisible] = useState(false);
 
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideY = useRef(new Animated.Value(20)).current;
@@ -288,15 +367,25 @@ export const HomeScreen: React.FC = () => {
       contentContainerStyle={styles.content}
       showsVerticalScrollIndicator={false}
     >
+      <LanguageSwitcherModal visible={langModalVisible} onClose={() => setLangModalVisible(false)} />
       <Animated.View style={{ opacity: fadeAnim, transform: [{ translateY: slideY }] }}>
 
         {/* ── Header ── */}
         <View style={styles.header}>
           <View>
             <Text style={styles.greeting}>{greeting} 👋</Text>
-            <Text style={styles.userName}>{user?.name || 'Welcome'}</Text>
+            <Text style={styles.userName}>{user?.name || t('welcome')}</Text>
           </View>
           <View style={styles.headerRight}>
+            {/* Language switcher button */}
+            <TouchableOpacity
+              style={styles.langBtn}
+              onPress={() => setLangModalVisible(true)}
+              activeOpacity={0.8}
+            >
+              <Text style={styles.langBtnFlag}>{currentLang.flag}</Text>
+              <Text style={styles.langBtnText}>{currentLang.code.toUpperCase()}</Text>
+            </TouchableOpacity>
             {scanHistory.length > 0 && (
               <View style={styles.scanCountBadge}>
                 <Text style={styles.scanCountText}>{scanHistory.length} {t('scans')}</Text>
@@ -376,7 +465,7 @@ export const HomeScreen: React.FC = () => {
                   onPress={() => navigation.navigate('Scanner', { cameraMode: 'normal' })}
                   activeOpacity={0.8}
                 >
-                  <Text style={styles.rescanText}>↻ Rescan</Text>
+                  <Text style={styles.rescanText}>{t('rescan')}</Text>
                 </TouchableOpacity>
               </View>
             </View>
@@ -384,15 +473,15 @@ export const HomeScreen: React.FC = () => {
         ) : (
           <View style={styles.noScanCard}>
             <Text style={{ fontSize: 36, marginBottom: 8 }}>🔍</Text>
-            <Text style={styles.noScanTitle}>No scans yet</Text>
-            <Text style={styles.noScanDesc}>Tap "Start Face Scan" above to begin your first health screening.</Text>
+            <Text style={styles.noScanTitle}>{t('no_scans_yet')}</Text>
+            <Text style={styles.noScanDesc}>{t('no_scans_desc')}</Text>
           </View>
         )}
 
         {/* ── Health Progress / Trend ── */}
         {scanHistory.length >= 2 && (
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Health Trend</Text>
+            <Text style={styles.sectionTitle}>{t('health_trend')}</Text>
             <View style={styles.trendCard}>
               <TrendChart history={scanHistory} />
             </View>
@@ -401,26 +490,26 @@ export const HomeScreen: React.FC = () => {
 
         {/* ── Quick Actions ── */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Quick Access</Text>
+          <Text style={styles.sectionTitle}>{t('quick_access')}</Text>
           <View style={styles.quickGrid}>
             <QuickCard
               icon="📊"
-              label="Health History"
-              desc="View all past scans"
+              label={t('health_history')}
+              desc={t('health_history_desc')}
               onPress={() => navigation.navigate('Results', { scanId: lastScan?.scanId || '' })}
               color="#f0faf3"
             />
             <QuickCard
               icon="🤖"
-              label="AI Health Chat"
-              desc="Ask health questions"
+              label={t('ai_chat')}
+              desc={t('ai_chat_desc')}
               onPress={() => navigation.navigate('Chatbot')}
               color="#f0f4ff"
             />
             <QuickCard
               icon="🍽️"
-              label="Diet Plan"
-              desc="Personalised meal guide"
+              label={t('diet_plan')}
+              desc={t('diet_plan_desc')}
               onPress={() => lastScan
                 ? navigation.navigate('Diet', { scanId: lastScan.scanId })
                 : navigation.navigate('Scanner', { cameraMode: 'normal' })
@@ -429,8 +518,8 @@ export const HomeScreen: React.FC = () => {
             />
             <QuickCard
               icon="📈"
-              label="Risk Forecast"
-              desc="6-12 month trajectory"
+              label={t('risk_forecast')}
+              desc={t('risk_forecast_desc')}
               onPress={() => lastScan
                 ? navigation.navigate('DREM', { scanId: lastScan.scanId })
                 : navigation.navigate('Scanner', { cameraMode: 'normal' })
@@ -442,13 +531,13 @@ export const HomeScreen: React.FC = () => {
 
         {/* ── How It Works ── */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>How It Works</Text>
+          <Text style={styles.sectionTitle}>{t('how_it_works')}</Text>
           <View style={styles.stepsCard}>
             {[
-              { step: '1', icon: '📷', title: 'Face Scan', desc: 'Align face in frame — camera captures rPPG signals & eye pallor' },
-              { step: '2', icon: '💬', title: 'Answer Questions', desc: 'Share lifestyle details — sleep, diet, activity, symptoms' },
-              { step: '3', icon: '🧠', title: 'AI Analysis', desc: 'On-device AI fuses all inputs to generate risk scores' },
-              { step: '4', icon: '📋', title: 'Get Your Report', desc: 'Receive risk levels, diet plan, and doctor recommendations' },
+              { step: '1', icon: '📷', title: t('step_face_scan'), desc: t('step_face_scan_desc') },
+              { step: '2', icon: '💬', title: t('step_questions'), desc: t('step_questions_desc') },
+              { step: '3', icon: '🧠', title: t('step_ai_analysis'), desc: t('step_ai_analysis_desc') },
+              { step: '4', icon: '📋', title: t('step_report'), desc: t('step_report_desc') },
             ].map((s, i) => (
               <View key={i} style={[styles.step, i < 3 && styles.stepBorder]}>
                 <View style={styles.stepNum}>
@@ -466,8 +555,8 @@ export const HomeScreen: React.FC = () => {
 
         {/* ── Footer ── */}
         <View style={styles.footer}>
-          <Text style={styles.footerText}>⚠️ Screening tool only – not a medical diagnosis</Text>
-          <Text style={styles.footerVersion}>AarogyaNetra AI v1.0 · Made in India 🇮🇳 · 100% Offline</Text>
+          <Text style={styles.footerText}>{t('footer_disclaimer')}</Text>
+          <Text style={styles.footerVersion}>{t('footer_version')}</Text>
         </View>
 
       </Animated.View>
@@ -484,7 +573,10 @@ const styles = StyleSheet.create({
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', paddingHorizontal: 24, paddingTop: 52, paddingBottom: 4 },
   greeting: { fontSize: 13, color: Colors.textTertiary, fontWeight: '500' },
   userName: { fontSize: 26, fontWeight: '800', color: Colors.textPrimary, letterSpacing: -0.5 },
-  headerRight: { alignItems: 'flex-end', paddingTop: 20 },
+  headerRight: { alignItems: 'flex-end', paddingTop: 16, gap: 6 },
+  langBtn: { flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: Colors.surfaceContainerLow, borderRadius: 999, paddingHorizontal: 12, paddingVertical: 6, borderWidth: 1, borderColor: Colors.surfaceBorder },
+  langBtnFlag: { fontSize: 16 },
+  langBtnText: { fontSize: 11, fontWeight: '800', color: Colors.textSecondary },
   scanCountBadge: { backgroundColor: 'rgba(0,110,47,0.1)', borderRadius: 999, paddingHorizontal: 12, paddingVertical: 5 },
   scanCountText: { fontSize: 12, fontWeight: '700', color: Colors.primary },
 

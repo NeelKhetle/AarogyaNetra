@@ -366,59 +366,57 @@ export const ScannerScreen: React.FC = () => {
     );
   }
 
-  // ─── Ready Phase ──────────────────
   if (phase === 'ready') {
     return (
-      <ScrollView style={styles.container} contentContainerStyle={styles.readyScroll}>
+      <View style={styles.container}>
+        <ScrollView contentContainerStyle={styles.readyScroll} showsVerticalScrollIndicator={false}>
 
-        {/* Camera preview — fullscreen top, no button inside */}
-        <View style={styles.cameraPreview}>
-          <Camera
-            ref={cameraRef}
-            style={StyleSheet.absoluteFill}
-            device={device}
-            isActive={true}
-            photo={false}
-            video={false}
-          />
-          {/* Face guide overlay */}
-          <View style={styles.faceGuideOverlay}>
-            <View style={styles.faceOval} />
-            <Text style={styles.guideText}>Position your face here</Text>
+          {/* Live camera preview */}
+          <View style={styles.cameraPreview}>
+            <Camera
+              ref={cameraRef}
+              style={StyleSheet.absoluteFill}
+              device={device}
+              isActive={true}
+              photo={false}
+              video={false}
+            />
+            {/* Face guide overlay */}
+            <View style={styles.faceGuideOverlay}>
+              <View style={styles.faceOval} />
+              <Text style={styles.guideText}>Position your face here</Text>
+            </View>
           </View>
-          {/* Dark gradient at bottom so button area is legible */}
-          <View style={styles.cameraBottomGrad} />
-        </View>
 
-        {/* Begin Scan button — overlaps camera bottom edge via negative margin */}
-        <View style={styles.scanButtonWrap}>
-          <AnimatedButton
-            title="▶   Begin Scan"
-            onPress={handleStartCapture}
-            variant="primary"
-            size="large"
-            fullWidth
-            style={styles.beginButton}
-          />
-          <Text style={styles.disclaimerOverlay}>
-            ⚡ All processing is 100% on-device
-          </Text>
-        </View>
+          {/* Normal Mode Instructions */}
+          <GlassCard style={styles.instructionCard}>
+            <Text style={[styles.instructionTitle, { color: Colors.primary }]}>
+              📷 Normal Mode Instructions
+            </Text>
+            <View style={styles.instructionList}>
+              <Text style={styles.instruction}>1️⃣  Hold your phone at arm's length</Text>
+              <Text style={styles.instruction}>2️⃣  Ensure good lighting on your face</Text>
+              <Text style={styles.instruction}>3️⃣  Stay still during the 10-second capture</Text>
+              <Text style={styles.instruction}>4️⃣  Then capture a close-up of your eye</Text>
+            </View>
+          </GlassCard>
 
-        {/* Normal Mode Instructions */}
-        <GlassCard style={styles.instructionCard}>
-          <Text style={[styles.instructionTitle, { color: Colors.primary }]}>
-            📷 How It Works
-          </Text>
-          <View style={styles.instructionList}>
-            <Text style={styles.instruction}>1️⃣  Hold your phone at arm's length</Text>
-            <Text style={styles.instruction}>2️⃣  Ensure good lighting on your face</Text>
-            <Text style={styles.instruction}>3️⃣  Stay still during the 10-second face capture</Text>
-            <Text style={styles.instruction}>4️⃣  Then capture a close-up of your lower eyelid</Text>
+          {/* Inline CTA — directly below instruction card */}
+          <View style={styles.ctaArea}>
+            <AnimatedButton
+              title="▶  Begin Normal Scan"
+              onPress={handleStartCapture}
+              variant="primary"
+              size="large"
+              fullWidth
+              style={styles.beginButton}
+            />
+            <Text style={styles.disclaimer}>
+              ⚡ All processing happens on your device — no data leaves your phone
+            </Text>
           </View>
-        </GlassCard>
-
-      </ScrollView>
+        </ScrollView>
+      </View>
     );
   }
 
@@ -519,7 +517,10 @@ export const ScannerScreen: React.FC = () => {
               <Text style={[styles.liveText, { color: Colors.anemia }]}>CAMERA ACTIVE</Text>
             </View>
           </GlassCard>
+        </View>
 
+        {/* Floating capture button at the very bottom */}
+        <View style={styles.floatingCTA}>
           <AnimatedButton
             title="📸  Capture Eye Image"
             onPress={handleEyeCapture}
@@ -552,49 +553,23 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.background,
   },
   readyScroll: {
-    paddingVertical: 0,
-    paddingBottom: 120,
+    paddingVertical: Spacing.lg,
+    paddingBottom: Spacing.xxl,
   },
   captureContent: {
     flex: 1,
     padding: Spacing.lg,
   },
-  // Camera preview — tall, edge-to-edge
+  // Camera preview
   cameraPreview: {
-    height: 400,
-    backgroundColor: '#000',
-    // no overflow:hidden so button below can overlap freely
-  },
-  // Dark gradient at camera bottom for visual transition
-  cameraBottomGrad: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    height: 80,
-    backgroundColor: 'rgba(0,0,0,0.55)',
-  },
-  // Button wrapper — negative margin overlaps camera bottom edge
-  scanButtonWrap: {
-    marginTop: -32,
-    marginHorizontal: Spacing.lg,
-    backgroundColor: Colors.background,
+    height: 280,
     borderRadius: BorderRadius.xl,
-    paddingHorizontal: Spacing.lg,
-    paddingTop: Spacing.lg,
-    paddingBottom: Spacing.sm,
-    elevation: 8,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: -4 },
-    shadowOpacity: 0.12,
-    shadowRadius: 12,
-    zIndex: 10,
-  },
-  disclaimerOverlay: {
-    ...Typography.caption,
-    color: Colors.textTertiary,
-    textAlign: 'center',
-    marginTop: Spacing.sm,
+    overflow: 'hidden',
+    marginHorizontal: Spacing.lg,
+    marginBottom: Spacing.lg,
+    backgroundColor: '#000',
+    borderWidth: 1,
+    borderColor: `${Colors.primary}40`,
   },
   cameraPreviewActive: {
     height: 360,
@@ -731,16 +706,45 @@ const styles = StyleSheet.create({
     ...Typography.body,
     color: Colors.textSecondary,
   },
-  // Begin scan button (inside camera overlay)
+  // CTA area — inline below instruction card
+  ctaArea: {
+    paddingHorizontal: Spacing.lg,
+    paddingBottom: Spacing.xxl,
+    paddingTop: Spacing.md,
+  },
+  // Floating CTA (used for eye capture only)
+  floatingCTA: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    paddingHorizontal: Spacing.lg,
+    paddingBottom: 28,
+    paddingTop: 16,
+    backgroundColor: Colors.background,
+    borderTopWidth: 1,
+    borderTopColor: Colors.surfaceBorder,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -4 },
+    shadowOpacity: 0.06,
+    shadowRadius: 16,
+    elevation: 8,
+  },
+  // Buttons
   beginButton: {
     borderRadius: BorderRadius.xl,
-    paddingVertical: 16,
+    paddingVertical: 18,
     backgroundColor: Colors.primary,
-    width: '100%',
   },
   captureBtn: {
     borderRadius: BorderRadius.xl,
     paddingVertical: 18,
+  },
+  disclaimer: {
+    ...Typography.caption,
+    color: Colors.textTertiary,
+    textAlign: 'center',
+    marginTop: Spacing.lg,
   },
   // Permission screen
   permissionContainer: {
