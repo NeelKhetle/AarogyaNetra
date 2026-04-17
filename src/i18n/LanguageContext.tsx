@@ -4,7 +4,7 @@
  * Reads language from the Zustand store and re-renders on change.
  */
 
-import React, { createContext, useContext } from 'react';
+import React, { createContext, useContext, useMemo } from 'react';
 import { type LanguageCode, type Translations, getTranslations, TRANSLATIONS } from './translations';
 import { useAppStore } from '../store/useAppStore';
 
@@ -30,18 +30,31 @@ export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   // Language code is stored in the global app store (persisted)
   const language = useAppStore((s) => s.language) as LanguageCode;
 
-  const translations = getTranslations(language);
+  const value = useMemo(() => {
+    let translations: Translations;
+    try {
+      translations = getTranslations(language);
+    } catch {
+      translations = TRANSLATIONS.en;
+    }
 
-  const tFn = (key: keyof Translations): string => {
-    const val = translations[key];
-    if (val) return val as string;
-    // fallback to English
-    const fallback = TRANSLATIONS.en[key];
-    return fallback ? (fallback as string) : String(key);
-  };
+    const tFn = (key: keyof Translations): string => {
+      try {
+        const val = translations[key];
+        if (val) return val as string;
+        // fallback to English
+        const fallback = TRANSLATIONS.en[key];
+        return fallback ? (fallback as string) : String(key);
+      } catch {
+        return String(key);
+      }
+    };
+
+    return { language, t: tFn, translations };
+  }, [language]);
 
   return (
-    <LanguageContext.Provider value={{ language, t: tFn, translations }}>
+    <LanguageContext.Provider value={value}>
       {children}
     </LanguageContext.Provider>
   );

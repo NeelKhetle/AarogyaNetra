@@ -2423,12 +2423,13 @@ export const TRANSLATIONS_EN_BASE: Translations = {
 // Falls back to English for any key not present in the selected language
 export function getTranslations(code: LanguageCode | string): Translations {
   const lang = TRANSLATIONS[code as LanguageCode];
-  if (!lang) return TRANSLATIONS_EN_BASE;
-  // Merge: selected language keys override English base (handles partial translations)
-  return { ...TRANSLATIONS_EN_BASE, ...lang };
+  if (!lang) return TRANSLATIONS.en;
+  // Merge: English base first, then selected language overrides (handles partial translations)
+  return { ...TRANSLATIONS.en, ...lang };
 }
 
 export function t(code: LanguageCode, key: keyof Translations): string {
   const trans = getTranslations(code);
   return trans[key] as string ?? (TRANSLATIONS.en[key] as string) ?? key;
 }
+
