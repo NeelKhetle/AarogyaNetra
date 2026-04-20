@@ -61,6 +61,7 @@ interface AppState {
   setScanStatus: (status: AppState['scanStatus']) => void;
   runScan: (cameraMode?: CameraMode) => ScanResult | null;
   runSymptomScan: (answers: QuestionAnswer[], cameraMode?: CameraMode) => ScanResult | null;
+  setCurrentScan: (scanId: string) => void;
 
   // DREM
   currentDREM: DREMTrajectory | null;
@@ -177,6 +178,13 @@ export const useAppStore = create<AppState>((set, get) => ({
     SimpleStorage.setJSON(STORAGE_KEYS.STORED_SCANS, newStoredScans);
 
     return result;
+  },
+
+  setCurrentScan: (scanId: string) => {
+    const stored = get().storedScans[scanId];
+    if (stored) {
+      set({ currentScan: stored });
+    }
   },
 
   runSymptomScan: (answers: QuestionAnswer[], cameraMode?: CameraMode) => {

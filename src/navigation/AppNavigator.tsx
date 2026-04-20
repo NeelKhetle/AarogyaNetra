@@ -28,6 +28,7 @@ import {
 } from '../screens/LabReportsScreen';
 import { DoctorScreen } from '../screens/DoctorScreen';
 import { WelcomeScreen } from '../screens/WelcomeScreen';
+import { EditProfileScreen } from '../screens/EditProfileScreen';
 
 // Types
 import type {
@@ -42,6 +43,7 @@ import { useLanguage } from '../i18n/LanguageContext';
 // ─── Types for 3-tab nav ──────────────────────────────
 type ProfileStackParamList = {
   ProfileMain: undefined;
+  EditProfile: undefined;
   ResultDetail: { scanId: string };
 };
 
@@ -137,6 +139,11 @@ function ProfileStackNavigator() {
         name="ProfileMain"
         component={ProfileScreen}
         options={{ headerShown: false }}
+      />
+      <ProfileStack.Screen
+        name="EditProfile"
+        component={EditProfileScreen}
+        options={{ title: 'Edit Profile', headerBackTitle: 'Profile' }}
       />
       <ProfileStack.Screen
         name="ResultDetail"

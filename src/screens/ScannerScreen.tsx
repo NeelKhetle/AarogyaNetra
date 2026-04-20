@@ -259,9 +259,69 @@ const PermissionDenied: React.FC<{ onRetry: () => void }> = ({ onRetry }) => (
 );
 
 // ─── Scanner Screen ────────────────────────────────────
-type ScanPhase = 'ready' | 'face-capture' | 'eye-capture' | 'processing' | 'done';
+type ScanPhase = 'ready' | 'face-capture' | 'eye-capture' | 'processing' | 'done' | 'error';
 
 type ScannerRouteProp = RouteProp<HomeStackParamList, 'Scanner'>;
+
+// Global scan flow steps
+const FLOW_STEPS = [
+  { icon: '💬', label: 'Questions', step: 0 },
+  { icon: '📷', label: 'Face Scan', step: 1 },
+  { icon: '👁️', label: 'Eye Scan', step: 2 },
+  { icon: '📊', label: 'Results', step: 3 },
+];
+
+const FlowStepBar: React.FC<{ currentStep: number }> = ({ currentStep }) => (
+  <View style={flowBarStyles.container}>
+    {FLOW_STEPS.map((item, i) => (
+      <React.Fragment key={i}>
+        <View style={flowBarStyles.step}>
+          <View style={[flowBarStyles.dot, i <= currentStep && flowBarStyles.dotActive, i < currentStep && flowBarStyles.dotDone]}>
+            <Text style={flowBarStyles.dotText}>
+              {i < currentStep ? '✓' : item.icon}
+            </Text>
+          </View>
+          <Text style={[flowBarStyles.label, i <= currentStep && flowBarStyles.labelActive]}>
+            {item.label}
+          </Text>
+        </View>
+        {i < FLOW_STEPS.length - 1 && (
+          <View style={[flowBarStyles.connector, i < currentStep && flowBarStyles.connectorDone]} />
+        )}
+      </React.Fragment>
+    ))}
+  </View>
+);
+
+const flowBarStyles = StyleSheet.create({
+  container: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: Spacing.lg,
+    paddingVertical: 12,
+    backgroundColor: `${Colors.primary}06`,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.surfaceBorder,
+  },
+  step: { alignItems: 'center', gap: 4 },
+  dot: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: Colors.surfaceContainerLow,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1.5,
+    borderColor: Colors.surfaceBorder,
+  },
+  dotActive: { backgroundColor: `${Colors.primary}20`, borderColor: Colors.primary },
+  dotDone: { backgroundColor: Colors.primary, borderColor: Colors.primary },
+  dotText: { fontSize: 14 },
+  label: { fontSize: 9, fontWeight: '600', color: Colors.textTertiary },
+  labelActive: { color: Colors.primary, fontWeight: '800' },
+  connector: { flex: 1, height: 2, backgroundColor: Colors.surfaceBorder, marginBottom: 16 },
+  connectorDone: { backgroundColor: Colors.primary },
+});
 
 export const ScannerScreen: React.FC = () => {
   const navigation = useNavigation<NavProp>();
@@ -330,11 +390,26 @@ export const ScannerScreen: React.FC = () => {
 
   const handleEyeCapture = () => {
     setPhase('processing');
+
+    // Timeout guard: if scan takes > 15 seconds, show error
+    const timeout = setTimeout(() => {
+      setPhase('error');
+    }, 15000);
+
     setTimeout(() => {
-      const result = runScan('normal');
-      if (result) {
-        setPhase('done');
-        navigation.replace('Results', { scanId: result.scanId });
+      try {
+        const result = runScan('normal');
+        clearTimeout(timeout);
+        if (result) {
+          setPhase('done');
+          navigation.replace('Results', { scanId: result.scanId });
+        } else {
+          setPhase('error');
+        }
+      } catch (e) {
+        clearTimeout(timeout);
+        console.error('[ScannerScreen] runScan error:', e);
+        setPhase('error');
       }
     }, 3000);
   };
@@ -373,9 +448,41 @@ export const ScannerScreen: React.FC = () => {
     );
   }
 
+  // ─── Error / Scan Failed ─────────────
+  if (phase === 'error') {
+    return (
+      <View style={styles.container}>
+        <View style={styles.permissionContainer}>
+          <Text style={[styles.permissionIcon, { fontSize: 56 }]}>⚠️</Text>
+          <Text style={styles.permissionTitle}>Unable to Generate Result</Text>
+          <Text style={styles.permissionDesc}>
+            Please try again. If the problem persists, refill the questionnaire.
+          </Text>
+          <AnimatedButton
+            title="🔄  Retry Scan"
+            onPress={() => setPhase('ready')}
+            variant="primary"
+            size="large"
+            fullWidth
+            style={styles.permissionBtn}
+          />
+          <AnimatedButton
+            title="📝  Back to Home"
+            onPress={() => navigation.goBack()}
+            variant="outline"
+            size="small"
+            style={styles.settingsBtn}
+          />
+        </View>
+      </View>
+    );
+ }
+
   if (phase === 'ready') {
     return (
       <View style={styles.container}>
+        {/* Global flow step bar - Step 2: Face Scan */}
+        <FlowStepBar currentStep={1} />
         <ScrollView contentContainerStyle={styles.readyScroll} showsVerticalScrollIndicator={false}>
 
           {/* Live camera preview */}
@@ -431,6 +538,8 @@ export const ScannerScreen: React.FC = () => {
   if (phase === 'face-capture') {
     return (
       <View style={styles.container}>
+        {/* Step 2: Face Scan */}
+        <FlowStepBar currentStep={1} />
         <View style={styles.captureContent}>
           {/* Live camera with scanning overlay */}
           <Animated.View style={[
@@ -489,6 +598,8 @@ export const ScannerScreen: React.FC = () => {
   if (phase === 'eye-capture') {
     return (
       <View style={styles.container}>
+        {/* Step 3: Eye Scan */}
+        <FlowStepBar currentStep={2} />
         <View style={styles.captureContent}>
           <Animated.View style={[
             styles.cameraPreviewActive,
@@ -514,14 +625,14 @@ export const ScannerScreen: React.FC = () => {
 
           <GlassCard style={styles.phaseCard}>
             <Text style={[styles.phaseTitle, { color: Colors.anemia }]}>
-              {t('step_ai_analysis')}
+              👁️ {t('eye_scan_label')}
             </Text>
             <Text style={styles.phaseDesc}>
-              {t('step_questions_desc')}
+              Look straight at the camera. Keep your eyelids open. AI will analyze conjunctival pallor for anemia detection.
             </Text>
             <View style={styles.liveIndicator}>
               <View style={[styles.liveDot, { backgroundColor: Colors.anemia }]} />
-              <Text style={[styles.liveText, { color: Colors.anemia }]}>{t('scan_complete').toUpperCase()}</Text>
+              <Text style={[styles.liveText, { color: Colors.anemia }]}>READY TO CAPTURE</Text>
             </View>
           </GlassCard>
         </View>
@@ -529,7 +640,7 @@ export const ScannerScreen: React.FC = () => {
         {/* Floating capture button at the very bottom */}
         <View style={styles.floatingCTA}>
           <AnimatedButton
-            title={`📸  ${t('eye_scan_label')}`}
+            title={`📸  Capture Eye Scan`}
             onPress={handleEyeCapture}
             variant="primary"
             size="large"

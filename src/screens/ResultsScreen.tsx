@@ -13,6 +13,7 @@ import {
   Animated,
   Share,
   Alert,
+  TouchableOpacity,
 } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -47,7 +48,37 @@ export const ResultsScreen: React.FC = () => {
   if (!scan) {
     return (
       <View style={styles.container}>
-        <Text style={styles.error}>Scan not found</Text>
+        <View style={styles.errorContainer}>
+          <Text style={styles.errorEmoji}>⚠️</Text>
+          <Text style={styles.errorTitle}>{t('result_error_title') || 'Unable to Generate Result'}</Text>
+          <Text style={styles.errorDesc}>
+            {t('result_error_desc') || "We couldn't load your health results. This may be due to an incomplete scan or a processing error."}
+          </Text>
+
+          <View style={styles.errorActions}>
+            <TouchableOpacity
+              style={styles.retryBtn}
+              onPress={() => navigation.goBack()}
+              activeOpacity={0.85}
+            >
+              <Text style={styles.retryBtnText}>🔄 {t('retry_scan') || 'Retry Scan'}</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.refillBtn}
+              onPress={() => navigation.navigate('Home')}
+              activeOpacity={0.85}
+            >
+              <Text style={styles.refillBtnText}>📝 {t('refill_questionnaire') || 'Refill Questionnaire'}</Text>
+            </TouchableOpacity>
+          </View>
+
+          <View style={styles.errorTips}>
+            <Text style={styles.errorTipTitle}>{t('troubleshooting_tips') || 'Troubleshooting Tips'}:</Text>
+            <Text style={styles.errorTip}>📡 Ensure app is not in airplane mode</Text>
+            <Text style={styles.errorTip}>💡 Make sure camera permission is granted</Text>
+            <Text style={styles.errorTip}>🔄 Close and restart the app if issue persists</Text>
+          </View>
+        </View>
       </View>
     );
   }
@@ -524,6 +555,83 @@ const styles = StyleSheet.create({
     color: Colors.danger,
     textAlign: 'center',
     marginTop: 100,
+  },
+  // Error fallback container
+  errorContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: Spacing.xxxl,
+  },
+  errorEmoji: {
+    fontSize: 64,
+    marginBottom: Spacing.lg,
+  },
+  errorTitle: {
+    ...Typography.h2,
+    color: Colors.danger,
+    textAlign: 'center',
+    marginBottom: Spacing.md,
+  },
+  errorDesc: {
+    ...Typography.body,
+    color: Colors.textSecondary,
+    textAlign: 'center',
+    lineHeight: 22,
+    marginBottom: Spacing.xxl,
+  },
+  errorActions: {
+    width: '100%',
+    gap: Spacing.md,
+    marginBottom: Spacing.xxl,
+  },
+  retryBtn: {
+    backgroundColor: Colors.primary,
+    borderRadius: BorderRadius.xl,
+    paddingVertical: 16,
+    alignItems: 'center',
+    elevation: 3,
+    shadowColor: Colors.primary,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
+  },
+  retryBtnText: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: '#fff',
+  },
+  refillBtn: {
+    backgroundColor: Colors.backgroundLight,
+    borderRadius: BorderRadius.xl,
+    paddingVertical: 16,
+    alignItems: 'center',
+    borderWidth: 1.5,
+    borderColor: Colors.primary,
+  },
+  refillBtnText: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: Colors.primary,
+  },
+  errorTips: {
+    width: '100%',
+    backgroundColor: Colors.surfaceContainerLow,
+    borderRadius: BorderRadius.md,
+    padding: Spacing.lg,
+    borderWidth: 1,
+    borderColor: Colors.surfaceBorder,
+    gap: Spacing.sm,
+  },
+  errorTipTitle: {
+    ...Typography.label,
+    color: Colors.textPrimary,
+    marginBottom: Spacing.xs,
+  },
+  errorTip: {
+    ...Typography.bodySmall,
+    color: Colors.textSecondary,
+    lineHeight: 20,
   },
   // Lab badge
   labBadge: {

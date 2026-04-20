@@ -1,21 +1,22 @@
 /**
- * ArogyaNetra AI - Profile Screen
- * User profile management, ABHA ID linking (Ayushman Bharat), data backup, and scan history.
+ * AarogyaNetra AI - Profile Screen (Read-Only View)
+ * Displays user data in read-only format.
+ * Edit is done via the dedicated EditProfileScreen.
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   ScrollView,
-  TextInput,
-  Alert,
-  Share,
   TouchableOpacity,
+  Share,
+  Alert,
   Dimensions,
   FlatList,
   Modal,
+  TextInput,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -23,58 +24,69 @@ import { GlassCard, AnimatedButton } from '../components/common';
 import { Colors, Typography, Spacing, BorderRadius } from '../theme';
 import { useAppStore } from '../store/useAppStore';
 import { useLanguage } from '../i18n/LanguageContext';
-import { LANGUAGE_LIST, type LanguageCode } from '../i18n/translations';
+import { LANGUAGE_LIST } from '../i18n/translations';
 import type { ProfileStackParamList, ScanHistoryEntry } from '../models/types';
 
 type NavProp = NativeStackNavigationProp<ProfileStackParamList, 'ProfileMain'>;
 
 const { width } = Dimensions.get('window');
 
-// ─── ABHA ID Validation ─────────────────────────────────
-function validateAbhaId(id: string): { valid: boolean; formatted: string; error?: string } {
-  // Remove spaces and dashes for validation
-  const cleaned = id.replace(/[\s-]/g, '');
-  
-  // ABHA ID is 14 digits
-  if (cleaned.length === 0) {
-    return { valid: true, formatted: '', error: undefined };
-  }
-  
-  if (!/^\d+$/.test(cleaned)) {
-    return { valid: false, formatted: cleaned, error: 'ABHA ID must contain only numbers' };
-  }
-  
-  if (cleaned.length < 14) {
-    return { valid: false, formatted: cleaned, error: `Enter 14 digits (${cleaned.length}/14 entered)` };
-  }
-  
-  if (cleaned.length > 14) {
-    return { valid: false, formatted: cleaned.substring(0, 14), error: 'ABHA ID must be exactly 14 digits' };
-  }
-  
-  // Format as XX-XXXX-XXXX-XXXX
-  const formatted = `${cleaned.substring(0, 2)}-${cleaned.substring(2, 6)}-${cleaned.substring(6, 10)}-${cleaned.substring(10, 14)}`;
-  return { valid: true, formatted, error: undefined };
-}
+// ─── Read-Only Field Row ─────────────────────────────────
+const InfoRow: React.FC<{ label: string; value: string; icon?: string; highlight?: boolean }> = ({
+  label, value, icon, highlight = false,
+}) => (
+  <View style={infoRowStyles.row}>
+    <View style={infoRowStyles.labelRow}>
+      {icon && <Text style={infoRowStyles.icon}>{icon}</Text>}
+      <Text style={infoRowStyles.label}>{label}</Text>
+    </View>
+    <Text style={[infoRowStyles.value, highlight && infoRowStyles.valueHighlight]}>{value}</Text>
+  </View>
+);
 
-// ─── Luhn Check (ABHA uses Luhn algorithm) ──────────────
-function luhnCheck(id: string): boolean {
-  const digits = id.replace(/[\s-]/g, '').split('').map(Number);
-  let sum = 0;
-  let isAlternate = false;
-  
-  for (let i = digits.length - 1; i >= 0; i--) {
-    let d = digits[i];
-    if (isAlternate) {
-      d *= 2;
-      if (d > 9) d -= 9;
-    }
-    sum += d;
-    isAlternate = !isAlternate;
-  }
-  
-  return sum % 10 === 0;
-}
+const infoRowStyles = StyleSheet.create({
+  row: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.surfaceBorder,
+  },
+  labelRow: { flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1 },
+  icon: { fontSize: 16, width: 24 },
+  label: { ...Typography.bodySmall, color: Colors.textTertiary, fontWeight: '500' },
+  value: { ...Typography.body, color: Colors.textPrimary, fontWeight: '600', maxWidth: '55%', textAlign: 'right' },
+  valueHighlight: { color: Colors.primary, fontWeight: '700' },
+});
+
+// ─── BMI Badge ───────────────────────────────────────────
+const BMIBadge: React.FC<{ weight?: number; height?: number }> = ({ weight, height }) => {
+  if (!weight || !height || weight <= 0 || height <= 0) return null;
+  const bmi = weight / ((height / 100) * (height / 100));
+  const bmiStr = bmi.toFixed(1);
+  const cat = bmi < 18.5 ? { label: 'Underweight', color: Colors.warning }
+    : bmi < 25 ? { label: 'Normal', color: Colors.success }
+    : bmi < 30 ? { label: 'Overweight', color: Colors.warning }
+    : { label: 'Obese', color: Colors.danger };
+
+  return (
+    <View style={[bmiStyles.badge, { backgroundColor: `${cat.color}15`, borderColor: `${cat.color}30` }]}>
+      <Text style={[bmiStyles.text, { color: cat.color }]}>BMI: {bmiStr} — {cat.label}</Text>
+    </View>
+  );
+};
+
+const bmiStyles = StyleSheet.create({
+  badge: {
+    marginTop: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 6,
+    borderRadius: 999,
+    borderWidth: 1,
+  },
+  text: { ...Typography.caption, fontWeight: '700' },
+});
 
 // ─── Mini Scan History Card ──────────────────────────────
 const ScanHistoryCard: React.FC<{ entry: ScanHistoryEntry; onPress: () => void }> = ({ entry, onPress }) => {
@@ -83,7 +95,6 @@ const ScanHistoryCard: React.FC<{ entry: ScanHistoryEntry; onPress: () => void }
   const dateStr = new Date(entry.timestamp).toLocaleDateString('en-IN', {
     day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit',
   });
-
   const maxRisk = Math.max(entry.hypertensionRisk, entry.diabetesRisk, entry.anemiaRisk);
   const primaryRisk = entry.hypertensionRisk === maxRisk ? '❤️ Hypertension'
     : entry.diabetesRisk === maxRisk ? '🩸 Diabetes' : '👁️ Anemia';
@@ -132,12 +143,13 @@ const historyCardStyles = StyleSheet.create({
   arrow: { fontSize: 16, color: Colors.textTertiary, fontWeight: '700' },
 });
 
+// ─── Main Profile Screen (Read-Only) ─────────────────────
 export const ProfileScreen: React.FC = () => {
   const navigation = useNavigation<NavProp>();
-  const { user, setUser, scanHistory, labReports, storedScans, language, setLanguage } = useAppStore();
+  const { user, scanHistory, labReports, storedScans, language, setLanguage } = useAppStore();
   const { t } = useLanguage();
 
-  // ─── Language picker state ────────────────────────────
+  // Language picker
   const [langModalVisible, setLangModalVisible] = useState(false);
   const [langSearch, setLangSearch] = useState('');
   const currentLangInfo = LANGUAGE_LIST.find(l => l.code === language) || LANGUAGE_LIST.find(l => l.code === 'en')!;
@@ -146,145 +158,43 @@ export const ProfileScreen: React.FC = () => {
     l.native.toLowerCase().includes(langSearch.toLowerCase())
   );
 
-  const [name, setName] = useState(user?.name || '');
-  const [age, setAge] = useState(user?.age?.toString() || '30');
-  const [gender, setGender] = useState<'male' | 'female' | 'other'>(user?.gender || 'male');
-  const [weight, setWeight] = useState(user?.weight?.toString() || '');
-  const [height, setHeight] = useState(user?.height?.toString() || '');
-  const [abhaId, setAbhaId] = useState(user?.abhaId || '');
-  const [abhaError, setAbhaError] = useState<string | undefined>();
-  const [abhaVerified, setAbhaVerified] = useState(user?.abhaVerified || false);
-
-  // Re-sync state when user changes
-  useEffect(() => {
-    if (user) {
-      setName(user.name || '');
-      setAge(user.age?.toString() || '30');
-      setGender(user.gender || 'male');
-      setWeight(user.weight?.toString() || '');
-      setHeight(user.height?.toString() || '');
-      setAbhaId(user.abhaId || '');
-      setAbhaVerified(user.abhaVerified || false);
-    }
-  }, [user]);
-
-  const handleAbhaChange = (text: string) => {
-    setAbhaId(text);
-    const result = validateAbhaId(text);
-    setAbhaError(result.error);
-    setAbhaVerified(false);
-  };
-
-  const handleVerifyAbha = () => {
-    const result = validateAbhaId(abhaId);
-    if (!result.valid) {
-      Alert.alert('❌ Invalid ABHA ID', result.error || 'Please enter a valid 14-digit ABHA ID');
-      return;
-    }
-
-    const cleaned = abhaId.replace(/[\s-]/g, '');
-    
-    // Luhn verification
-    if (!luhnCheck(cleaned)) {
-      // In a real app, this would call the ABDM API
-      // For now, accept any 14-digit number but show warning
-      Alert.alert(
-        '⚠️ ABHA Verification',
-        'ABHA ID format is valid (14 digits). In production, this would verify with the ABDM (Ayushman Bharat Digital Mission) server.\n\nFor this MVP, your ABHA ID has been saved locally.',
-        [{ text: 'OK', onPress: () => setAbhaVerified(true) }]
-      );
-    } else {
-      setAbhaVerified(true);
-      Alert.alert('✅ ABHA Verified', 'Your Ayushman Bharat Health Account ID has been verified and linked.');
-    }
-  };
-
-  const handleSave = () => {
-    const parsedAge = parseInt(age, 10);
-    if (isNaN(parsedAge) || parsedAge < 1 || parsedAge > 120) {
-      Alert.alert('⚠️ Invalid Age', 'Please enter a valid age between 1 and 120.');
-      return;
-    }
-
-    const abhaResult = validateAbhaId(abhaId);
-    const cleanedAbha = abhaId.replace(/[\s-]/g, '');
-
-    setUser({
-      name: name || 'User',
-      age: parsedAge,
-      gender,
-      weight: weight ? parseFloat(weight) : undefined,
-      height: height ? parseFloat(height) : undefined,
-      abhaId: cleanedAbha.length === 14 ? cleanedAbha : undefined,
-      abhaVerified: abhaVerified,
-    });
-    Alert.alert('✅ Profile Saved', 'Your profile has been updated and saved locally on this device.');
-  };
-
-  // ─── Backup / Export ─────────────────
-  const handleBackupData = async () => {
-    try {
-      const backupData = {
-        exportDate: new Date().toISOString(),
-        appVersion: '1.0.0',
-        user: user,
-        scanHistory: scanHistory,
-        labReports: labReports,
-        totalScans: scanHistory.length,
-        totalLabReports: labReports.length,
-      };
-
-      const backupString = JSON.stringify(backupData, null, 2);
-      
-      await Share.share({
-        message: backupString,
-        title: 'AarogyaNetra Backup',
-      });
-    } catch (err) {
-      Alert.alert('Error', 'Failed to create backup. Please try again.');
-    }
-  };
-
   const handleExportAll = async () => {
     Alert.alert(
       '📦 Export All Data',
-      'This will export your profile, scan history, and lab reports as a JSON file. You can share it via WhatsApp, Email, or save it.',
+      'This will export your profile, scan history, and lab reports as a JSON file.',
       [
         { text: 'Cancel', style: 'cancel' },
-        { text: 'Export', onPress: handleBackupData },
+        {
+          text: 'Export', onPress: async () => {
+            try {
+              const backupData = {
+                exportDate: new Date().toISOString(),
+                appVersion: '1.0.0',
+                user,
+                scanHistory,
+                labReports,
+                totalScans: scanHistory.length,
+                totalLabReports: labReports.length,
+              };
+              await Share.share({
+                message: JSON.stringify(backupData, null, 2),
+                title: 'AarogyaNetra Backup',
+              });
+            } catch (_) {
+              Alert.alert('Error', 'Failed to create backup. Please try again.');
+            }
+          },
+        },
       ]
     );
   };
 
-  // ─── BMI Calculation ─────────────────
-  const getBMI = (): string | null => {
-    const w = parseFloat(weight);
-    const h = parseFloat(height);
-    if (!w || !h || w <= 0 || h <= 0) return null;
-    const bmi = w / ((h / 100) * (h / 100));
-    return bmi.toFixed(1);
-  };
+  const genderLabel = user?.gender === 'male' ? `👨 ${t('male')}`
+    : user?.gender === 'female' ? `👩 ${t('female')}` : `🧑 ${t('other')}`;
 
-  const getBMICategory = (bmi: number): { label: string; color: string } => {
-    if (bmi < 18.5) return { label: 'Underweight', color: Colors.warning };
-    if (bmi < 25) return { label: 'Normal', color: Colors.success };
-    if (bmi < 30) return { label: 'Overweight', color: Colors.warning };
-    return { label: 'Obese', color: Colors.danger };
-  };
-
-  const bmi = getBMI();
-  const bmiCategory = bmi ? getBMICategory(parseFloat(bmi)) : null;
-
-  const GenderButton: React.FC<{ value: 'male' | 'female' | 'other'; label: string; emoji: string }> =
-    ({ value, label, emoji }) => (
-      <AnimatedButton
-        title={`${emoji}  ${label}`}
-        onPress={() => setGender(value)}
-        variant={gender === value ? 'primary' : 'outline'}
-        size="small"
-        style={styles.genderBtn}
-      />
-    );
+  const abhaDisplay = user?.abhaId
+    ? `${user.abhaId.substring(0, 2)}-${user.abhaId.substring(2, 6)}-${user.abhaId.substring(6, 10)}-${user.abhaId.substring(10, 14)}`
+    : 'Not linked';
 
   return (
     <ScrollView
@@ -292,149 +202,88 @@ export const ProfileScreen: React.FC = () => {
       contentContainerStyle={styles.content}
       showsVerticalScrollIndicator={false}
     >
-      {/* Header */}
+      {/* ── Profile Header ── */}
       <View style={styles.header}>
-        <View style={styles.avatar}>
-          <Text style={styles.avatarText}>
-            {(name || 'U')[0].toUpperCase()}
-          </Text>
-        </View>
-        <Text style={styles.userName}>{name || 'User'}</Text>
-        <Text style={styles.userMeta}>
-          {scanHistory.length} {t('scans')} · {labReports.length} {t('reports')} · {user?.gender || 'male'} · {t('age')} {user?.age || 30}
-        </Text>
-        {bmi && (
-          <View style={[styles.bmiBadge, { backgroundColor: `${bmiCategory?.color}15`, borderColor: `${bmiCategory?.color}30` }]}>
-            <Text style={[styles.bmiText, { color: bmiCategory?.color }]}>
-              BMI: {bmi} — {bmiCategory?.label}
-            </Text>
+        <View style={styles.avatarWrap}>
+          <View style={styles.avatar}>
+            <Text style={styles.avatarText}>{(user?.name || 'U')[0].toUpperCase()}</Text>
           </View>
-        )}
-      </View>
-
-      {/* Profile Form */}
-      <GlassCard style={styles.formCard}>
-        <Text style={styles.sectionTitle}>👤 Personal Information</Text>
-
-        <Text style={styles.fieldLabel}>{t('full_name')}</Text>
-        <TextInput
-          style={styles.input}
-          value={name}
-          onChangeText={setName}
-          placeholder="Enter your name"
-          placeholderTextColor={Colors.textTertiary}
-        />
-
-        <Text style={styles.fieldLabel}>{t('age')}</Text>
-        <TextInput
-          style={styles.input}
-          value={age}
-          onChangeText={setAge}
-          placeholder="Enter age"
-          placeholderTextColor={Colors.textTertiary}
-          keyboardType="numeric"
-        />
-
-        <View style={styles.rowFields}>
-          <View style={styles.halfField}>
-            <Text style={styles.fieldLabel}>Weight (kg)</Text>
-            <TextInput
-              style={styles.input}
-              value={weight}
-              onChangeText={setWeight}
-              placeholder="e.g. 65"
-              placeholderTextColor={Colors.textTertiary}
-              keyboardType="decimal-pad"
-            />
-          </View>
-          <View style={styles.halfField}>
-            <Text style={styles.fieldLabel}>Height (cm)</Text>
-            <TextInput
-              style={styles.input}
-              value={height}
-              onChangeText={setHeight}
-              placeholder="e.g. 170"
-              placeholderTextColor={Colors.textTertiary}
-              keyboardType="decimal-pad"
-            />
-          </View>
-        </View>
-
-        <Text style={styles.fieldLabel}>{t('gender')}</Text>
-        <View style={styles.genderRow}>
-          <GenderButton value="male" label={t('male')} emoji="👨" />
-          <GenderButton value="female" label={t('female')} emoji="👩" />
-          <GenderButton value="other" label={t('other')} emoji="🧑" />
-        </View>
-      </GlassCard>
-
-      {/* ABHA ID — Ayushman Bharat */}
-      <GlassCard variant="accent" style={styles.formCard}>
-        <View style={styles.abhaHeader}>
-          <Text style={styles.sectionTitle}>🏥 Ayushman Bharat (ABDM)</Text>
-          {abhaVerified && (
-            <View style={styles.verifiedBadge}>
-              <Text style={styles.verifiedText}>✅ Linked</Text>
+          {user?.abhaVerified && (
+            <View style={styles.abhaCheck}>
+              <Text style={{ fontSize: 12 }}>✅</Text>
             </View>
           )}
         </View>
-        <Text style={styles.fieldDesc}>
-          Link your ABHA (Ayushman Bharat Health Account) ID to enable health record sharing 
-          via the ABDM network. Your health records can be accessed at any ABDM-connected hospital.
+        <Text style={styles.userName}>{user?.name || 'User'}</Text>
+        <Text style={styles.userMeta}>
+          {genderLabel} · {t('age')} {user?.age || '—'} · {scanHistory.length} {t('scans')}
         </Text>
+        <BMIBadge weight={user?.weight} height={user?.height} />
 
-        <Text style={styles.fieldLabel}>ABHA ID (14-digit)</Text>
-        <TextInput
-          style={[
-            styles.input,
-            abhaError ? styles.inputError : (abhaVerified ? styles.inputSuccess : {}),
-          ]}
-          value={abhaId}
-          onChangeText={handleAbhaChange}
-          placeholder="XX-XXXX-XXXX-XXXX"
-          placeholderTextColor={Colors.textTertiary}
-          keyboardType="numeric"
-          maxLength={17} // 14 digits + 3 dashes
+        {/* ✏️ Edit Profile Button */}
+        <TouchableOpacity
+          style={styles.editBtn}
+          onPress={() => navigation.navigate('EditProfile')}
+          activeOpacity={0.85}
+        >
+          <Text style={styles.editBtnIcon}>✏️</Text>
+          <Text style={styles.editBtnText}>{t('edit_profile')}</Text>
+        </TouchableOpacity>
+      </View>
+
+      {/* ── Personal Details (Read-Only) ── */}
+      <GlassCard style={styles.card}>
+        <Text style={styles.sectionTitle}>👤 Personal Information</Text>
+        <InfoRow icon="📛" label={t('full_name')} value={user?.name || '—'} />
+        <InfoRow icon="🎂" label={t('age')} value={user?.age ? `${user.age} years` : '—'} />
+        <InfoRow icon="⚥" label={t('gender')} value={genderLabel} />
+        {user?.weight && <InfoRow icon="⚖️" label="Weight" value={`${user.weight} kg`} />}
+        {user?.height && <InfoRow icon="📏" label="Height" value={`${user.height} cm`} />}
+      </GlassCard>
+
+      {/* ── ABHA ID Section (Read-Only) ── */}
+      <GlassCard variant="accent" style={styles.card}>
+        <View style={styles.abhaHeader}>
+          <Text style={styles.sectionTitle}>🏥 Ayushman Bharat (ABDM)</Text>
+          {user?.abhaVerified && (
+            <View style={styles.verifiedBadge}>
+              <Text style={styles.verifiedText}>✅ Verified</Text>
+            </View>
+          )}
+        </View>
+
+        <InfoRow
+          icon="🆔"
+          label="ABHA ID"
+          value={abhaDisplay}
+          highlight={!!user?.abhaId}
         />
-        {abhaError && (
-          <Text style={styles.errorText}>⚠️ {abhaError}</Text>
+
+        {!user?.abhaId && (
+          <View style={styles.abhaNotice}>
+            <Text style={styles.abhaNoticeText}>
+              ⚠️ No ABHA ID linked. Tap "Edit Profile" to add your Ayushman Bharat Health Account ID.
+            </Text>
+            <TouchableOpacity
+              style={styles.linkAbhaBtn}
+              onPress={() => navigation.navigate('EditProfile')}
+              activeOpacity={0.85}
+            >
+              <Text style={styles.linkAbhaBtnText}>🔗 Link ABHA ID</Text>
+            </TouchableOpacity>
+          </View>
         )}
 
-        <AnimatedButton
-          title={abhaVerified ? `✅ ${t('abha_verified')}` : `🔗 ${t('verify_abha')}`}
-          onPress={handleVerifyAbha}
-          variant={abhaVerified ? 'outline' : 'primary'}
-          size="small"
-          style={styles.verifyBtn}
-        />
-
-        {/* ABHA Benefits */}
         <View style={styles.abhaBenefits}>
           <Text style={styles.benefitItem}>🏥 Access records at any ABDM hospital</Text>
           <Text style={styles.benefitItem}>📱 Digital health locker integration</Text>
           <Text style={styles.benefitItem}>💊 Prescription history tracking</Text>
           <Text style={styles.benefitItem}>🆓 Free — Part of Ayushman Bharat scheme</Text>
         </View>
-
-        <Text style={styles.abhaNote}>
-          💡 Don't have an ABHA ID? Visit your nearest CSC (Common Service Centre) or download the ABHA app to create one for free.
-        </Text>
       </GlassCard>
 
-      {/* Save Button */}
-      <View style={styles.saveContainer}>
-        <AnimatedButton
-          title={`💾  ${t('save_profile')}`}
-          onPress={handleSave}
-          variant="primary"
-          size="large"
-          fullWidth
-          style={styles.saveBtn}
-        />
-      </View>
-
       {/* ── Scan History ── */}
-      <GlassCard style={styles.formCard}>
+      <GlassCard style={styles.card}>
         <View style={styles.historyHeader}>
           <Text style={styles.sectionTitle}>📊 {t('scan_history')}</Text>
           <View style={styles.historyCountBadge}>
@@ -470,7 +319,7 @@ export const ProfileScreen: React.FC = () => {
       </GlassCard>
 
       {/* ── Language Settings ── */}
-      <GlassCard style={styles.formCard}>
+      <GlassCard style={styles.card}>
         <Text style={styles.sectionTitle}>🌐 {t('language_settings')}</Text>
         <Text style={styles.fieldDesc}>{t('language_settings_desc')}</Text>
 
@@ -487,7 +336,6 @@ export const ProfileScreen: React.FC = () => {
           <Text style={langPickerStyles.chevron}>▼</Text>
         </TouchableOpacity>
 
-        {/* Language Modal */}
         <Modal
           visible={langModalVisible}
           animationType="slide"
@@ -501,8 +349,6 @@ export const ProfileScreen: React.FC = () => {
                 <Text style={langPickerStyles.close}>✕</Text>
               </TouchableOpacity>
             </View>
-
-            {/* Search */}
             <TextInput
               style={langPickerStyles.search}
               value={langSearch}
@@ -510,7 +356,6 @@ export const ProfileScreen: React.FC = () => {
               placeholder={t('search_language')}
               placeholderTextColor={Colors.textTertiary}
             />
-
             <FlatList
               data={filteredLangs}
               keyExtractor={item => item.code}
@@ -520,17 +365,12 @@ export const ProfileScreen: React.FC = () => {
                 return (
                   <TouchableOpacity
                     style={[langPickerStyles.langRow, isActive && langPickerStyles.langRowActive]}
-                    onPress={() => {
-                      setLanguage(lang.code);
-                      setLangModalVisible(false);
-                    }}
+                    onPress={() => { setLanguage(lang.code); setLangModalVisible(false); }}
                     activeOpacity={0.75}
                   >
                     <Text style={{ fontSize: 22 }}>{lang.flag}</Text>
                     <View style={{ flex: 1 }}>
-                      <Text style={[langPickerStyles.langNative, isActive && { color: Colors.primary }]}>
-                        {lang.native}
-                      </Text>
+                      <Text style={[langPickerStyles.langNative, isActive && { color: Colors.primary }]}>{lang.native}</Text>
                       <Text style={langPickerStyles.langEnglish}>{lang.label}</Text>
                     </View>
                     {isActive && (
@@ -546,25 +386,25 @@ export const ProfileScreen: React.FC = () => {
         </Modal>
       </GlassCard>
 
-      {/* Data Backup */}
-      <GlassCard style={styles.formCard}>
+      {/* ── Data Backup ── */}
+      <GlassCard style={styles.card}>
         <Text style={styles.sectionTitle}>💾 {t('data_backup')}</Text>
         <Text style={styles.fieldDesc}>{t('data_backup_desc')}</Text>
 
         <View style={styles.dataStats}>
           <View style={styles.dataStat}>
             <Text style={styles.dataStatValue}>{scanHistory.length}</Text>
-        <Text style={styles.dataStatLabel}>{t('scans')}</Text>
+            <Text style={styles.dataStatLabel}>{t('scans')}</Text>
           </View>
           <View style={styles.dataStatDivider} />
           <View style={styles.dataStat}>
             <Text style={styles.dataStatValue}>{labReports.length}</Text>
-        <Text style={styles.dataStatLabel}>{t('reports')}</Text>
+            <Text style={styles.dataStatLabel}>{t('reports')}</Text>
           </View>
           <View style={styles.dataStatDivider} />
           <View style={styles.dataStat}>
             <Text style={styles.dataStatValue}>{Object.keys(storedScans).length}</Text>
-        <Text style={styles.dataStatLabel}>{t('full_records')}</Text>
+            <Text style={styles.dataStatLabel}>{t('full_records')}</Text>
           </View>
         </View>
 
@@ -577,30 +417,21 @@ export const ProfileScreen: React.FC = () => {
         />
       </GlassCard>
 
-      {/* App Info */}
-      <GlassCard style={styles.infoCard}>
+      {/* ── About App ── */}
+      <GlassCard style={styles.card}>
         <Text style={styles.infoTitle}>ℹ️ About AarogyaNetra</Text>
-        <View style={styles.infoRow}>
-          <Text style={styles.infoLabel}>Version</Text>
-          <Text style={styles.infoValue}>1.0.0 (MVP)</Text>
-        </View>
-        <View style={styles.infoRow}>
-          <Text style={styles.infoLabel}>ML Engine</Text>
-          <Text style={styles.infoValue}>Profile-Deterministic AI</Text>
-        </View>
-        <View style={styles.infoRow}>
-          <Text style={styles.infoLabel}>Data Storage</Text>
-          <Text style={styles.infoValue}>Local + AsyncStorage</Text>
-        </View>
-        <View style={styles.infoRow}>
-          <Text style={styles.infoLabel}>ABDM Integration</Text>
-          <Text style={styles.infoValue}>ABHA ID Linking</Text>
-        </View>
-        <View style={styles.infoRow}>
-          <Text style={styles.infoLabel}>Team</Text>
-          <Text style={styles.infoValue}>Tech-Tantra</Text>
-        </View>
-
+        {[
+          { label: 'Version', value: '1.0.0 (MVP)' },
+          { label: 'ML Engine', value: 'Profile-Deterministic AI' },
+          { label: 'Data Storage', value: 'Local + AsyncStorage' },
+          { label: 'ABDM Integration', value: 'ABHA ID Linking' },
+          { label: 'Team', value: 'Tech-Tantra' },
+        ].map((row, i) => (
+          <View key={i} style={styles.infoRow}>
+            <Text style={styles.infoLabel}>{row.label}</Text>
+            <Text style={styles.infoValue}>{row.value}</Text>
+          </View>
+        ))}
         <Text style={styles.disclaimer}>
           This is a screening tool for early risk detection. It does not provide medical diagnoses.
           Always consult a qualified healthcare provider for medical decisions.
@@ -610,117 +441,73 @@ export const ProfileScreen: React.FC = () => {
   );
 };
 
+// ─── Styles ───────────────────────────────────────────────
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: Colors.background,
-  },
-  content: {
-    paddingBottom: 100,
-  },
+  container: { flex: 1, backgroundColor: Colors.background },
+  content: { paddingBottom: 100 },
+
   // Header
   header: {
     alignItems: 'center',
-    paddingVertical: Spacing.xxxl,
+    paddingTop: Spacing.xxxl,
+    paddingBottom: Spacing.xl,
+    paddingHorizontal: Spacing.lg,
   },
+  avatarWrap: { position: 'relative', marginBottom: Spacing.md },
   avatar: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
+    width: 84,
+    height: 84,
+    borderRadius: 42,
     backgroundColor: Colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: Spacing.md,
+    elevation: 6,
+    shadowColor: Colors.primary,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 12,
   },
-  avatarText: {
-    ...Typography.h1,
-    color: Colors.white,
-    fontSize: 36,
-  },
-  userName: {
-    ...Typography.h2,
-    color: Colors.textPrimary,
-  },
-  userMeta: {
-    ...Typography.bodySmall,
-    color: Colors.textTertiary,
-    marginTop: 4,
-  },
-  bmiBadge: {
-    marginTop: Spacing.sm,
-    paddingHorizontal: Spacing.lg,
-    paddingVertical: Spacing.xs,
-    borderRadius: BorderRadius.round,
-    borderWidth: 1,
-  },
-  bmiText: {
-    ...Typography.caption,
-    fontWeight: '600',
-  },
-  // Form
-  formCard: {
-    marginHorizontal: Spacing.lg,
-    marginBottom: Spacing.lg,
-  },
-  sectionTitle: {
-    ...Typography.h4,
-    color: Colors.textPrimary,
-    marginBottom: Spacing.lg,
-  },
-  fieldLabel: {
-    ...Typography.label,
-    color: Colors.textSecondary,
-    marginBottom: Spacing.xs,
-    marginTop: Spacing.md,
-  },
-  fieldDesc: {
-    ...Typography.bodySmall,
-    color: Colors.textTertiary,
-    lineHeight: 20,
-    marginBottom: Spacing.sm,
-  },
-  input: {
-    backgroundColor: Colors.backgroundLight,
-    borderRadius: BorderRadius.md,
-    borderWidth: 1,
-    borderColor: Colors.surfaceBorder,
-    paddingHorizontal: Spacing.lg,
-    paddingVertical: Spacing.md,
-    color: Colors.textPrimary,
-    ...Typography.body,
-  },
-  inputError: {
-    borderColor: Colors.danger,
-  },
-  inputSuccess: {
+  avatarText: { ...Typography.h1, color: Colors.white, fontSize: 36 },
+  abhaCheck: {
+    position: 'absolute',
+    bottom: 0,
+    right: 0,
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    padding: 2,
+    borderWidth: 1.5,
     borderColor: Colors.success,
   },
-  errorText: {
-    ...Typography.caption,
-    color: Colors.danger,
-    marginTop: Spacing.xs,
-  },
-  rowFields: {
+  userName: { ...Typography.h2, color: Colors.textPrimary },
+  userMeta: { ...Typography.bodySmall, color: Colors.textTertiary, marginTop: 4 },
+  editBtn: {
     flexDirection: 'row',
-    gap: Spacing.md,
+    alignItems: 'center',
+    gap: 8,
+    marginTop: 16,
+    backgroundColor: Colors.primary,
+    borderRadius: 999,
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    elevation: 3,
+    shadowColor: Colors.primary,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
   },
-  halfField: {
-    flex: 1,
-  },
-  genderRow: {
-    flexDirection: 'row',
-    gap: Spacing.sm,
-    marginTop: Spacing.xs,
-  },
-  genderBtn: {
-    flex: 1,
-  },
+  editBtnIcon: { fontSize: 16 },
+  editBtnText: { fontSize: 14, fontWeight: '800', color: '#fff' },
+
+  card: { marginHorizontal: Spacing.lg, marginBottom: Spacing.lg },
+  sectionTitle: { ...Typography.h4, color: Colors.textPrimary, marginBottom: Spacing.md },
+  fieldDesc: { ...Typography.bodySmall, color: Colors.textTertiary, lineHeight: 20, marginBottom: Spacing.sm },
+
   // ABHA
   abhaHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: Spacing.lg,
+    marginBottom: Spacing.sm,
   },
   verifiedBadge: {
     backgroundColor: `${Colors.success}15`,
@@ -730,110 +517,34 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: `${Colors.success}30`,
   },
-  verifiedText: {
-    ...Typography.caption,
-    color: Colors.success,
-    fontWeight: '600',
+  verifiedText: { ...Typography.caption, color: Colors.success, fontWeight: '600' },
+  abhaNotice: {
+    backgroundColor: `${Colors.warning}10`,
+    borderRadius: 12,
+    padding: 14,
+    marginTop: 10,
+    borderWidth: 1,
+    borderColor: `${Colors.warning}25`,
   },
-  verifyBtn: {
-    marginTop: Spacing.md,
-    borderRadius: BorderRadius.md,
+  abhaNoticeText: { ...Typography.bodySmall, color: Colors.warning, lineHeight: 19, marginBottom: 10 },
+  linkAbhaBtn: {
+    backgroundColor: Colors.primary,
+    borderRadius: 10,
+    paddingVertical: 10,
+    alignItems: 'center',
   },
+  linkAbhaBtnText: { fontSize: 13, fontWeight: '700', color: '#fff' },
   abhaBenefits: {
-    marginTop: Spacing.lg,
-    backgroundColor: Colors.surface,
-    borderRadius: BorderRadius.md,
-    padding: Spacing.lg,
-    borderWidth: 1,
-    borderColor: Colors.surfaceBorder,
-    gap: Spacing.sm,
-  },
-  benefitItem: {
-    ...Typography.bodySmall,
-    color: Colors.textSecondary,
-    lineHeight: 20,
-  },
-  abhaNote: {
-    ...Typography.caption,
-    color: Colors.primary,
     marginTop: Spacing.md,
-    lineHeight: 18,
-    fontStyle: 'italic',
-  },
-  // Save
-  saveContainer: {
-    paddingHorizontal: Spacing.lg,
-    marginBottom: Spacing.lg,
-  },
-  saveBtn: {
-    borderRadius: BorderRadius.xl,
-  },
-  // Data backup
-  dataStats: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
     backgroundColor: Colors.surface,
     borderRadius: BorderRadius.md,
-    paddingVertical: Spacing.lg,
+    padding: Spacing.md,
     borderWidth: 1,
     borderColor: Colors.surfaceBorder,
-    marginBottom: Spacing.lg,
+    gap: 6,
   },
-  dataStat: {
-    alignItems: 'center',
-    paddingHorizontal: Spacing.xl,
-  },
-  dataStatValue: {
-    ...Typography.h3,
-    color: Colors.primary,
-  },
-  dataStatLabel: {
-    ...Typography.caption,
-    color: Colors.textTertiary,
-    marginTop: 4,
-  },
-  dataStatDivider: {
-    width: 1,
-    height: 30,
-    backgroundColor: Colors.surfaceBorder,
-  },
-  backupBtn: {
-    borderRadius: BorderRadius.md,
-  },
-  // Info
-  infoCard: {
-    marginHorizontal: Spacing.lg,
-  },
-  infoTitle: {
-    ...Typography.h4,
-    color: Colors.textPrimary,
-    marginBottom: Spacing.lg,
-  },
-  infoRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    paddingVertical: Spacing.sm,
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.surfaceBorder,
-  },
-  infoLabel: {
-    ...Typography.bodySmall,
-    color: Colors.textTertiary,
-  },
-  infoValue: {
-    ...Typography.bodySmall,
-    color: Colors.textSecondary,
-    fontWeight: '500',
-  },
-  disclaimer: {
-    ...Typography.caption,
-    color: Colors.textTertiary,
-    marginTop: Spacing.lg,
-    lineHeight: 18,
-    textAlign: 'center',
-    fontStyle: 'italic',
-  },
+  benefitItem: { ...Typography.bodySmall, color: Colors.textSecondary, lineHeight: 20 },
+
   // Scan history
   historyHeader: {
     flexDirection: 'row',
@@ -849,21 +560,9 @@ const styles = StyleSheet.create({
     minWidth: 26,
     alignItems: 'center',
   },
-  historyCount: {
-    fontSize: 12,
-    fontWeight: '800',
-    color: '#fff',
-  },
-  noHistoryWrap: {
-    alignItems: 'center',
-    paddingVertical: 20,
-  },
-  noHistoryText: {
-    fontSize: 13,
-    color: Colors.textTertiary,
-    textAlign: 'center',
-    lineHeight: 19,
-  },
+  historyCount: { fontSize: 12, fontWeight: '800', color: '#fff' },
+  noHistoryWrap: { alignItems: 'center', paddingVertical: 20 },
+  noHistoryText: { fontSize: 13, color: Colors.textTertiary, textAlign: 'center', lineHeight: 19 },
   viewAllBtn: {
     borderRadius: 12,
     borderWidth: 1,
@@ -872,14 +571,48 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginTop: 4,
   },
-  viewAllText: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: Colors.primary,
+  viewAllText: { fontSize: 13, fontWeight: '700', color: Colors.primary },
+
+  // Data backup
+  dataStats: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: Colors.surface,
+    borderRadius: BorderRadius.md,
+    paddingVertical: Spacing.lg,
+    borderWidth: 1,
+    borderColor: Colors.surfaceBorder,
+    marginBottom: Spacing.lg,
+  },
+  dataStat: { alignItems: 'center', paddingHorizontal: Spacing.xl },
+  dataStatValue: { ...Typography.h3, color: Colors.primary },
+  dataStatLabel: { ...Typography.caption, color: Colors.textTertiary, marginTop: 4 },
+  dataStatDivider: { width: 1, height: 30, backgroundColor: Colors.surfaceBorder },
+  backupBtn: { borderRadius: BorderRadius.md },
+
+  // Info
+  infoTitle: { ...Typography.h4, color: Colors.textPrimary, marginBottom: Spacing.lg },
+  infoRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingVertical: Spacing.sm,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.surfaceBorder,
+  },
+  infoLabel: { ...Typography.bodySmall, color: Colors.textTertiary },
+  infoValue: { ...Typography.bodySmall, color: Colors.textSecondary, fontWeight: '500' },
+  disclaimer: {
+    ...Typography.caption,
+    color: Colors.textTertiary,
+    marginTop: Spacing.lg,
+    lineHeight: 18,
+    textAlign: 'center',
+    fontStyle: 'italic',
   },
 });
 
-// ─── Language Picker Styles ───────────────────────────────────────────────────
+// ─── Language Picker Styles ───────────────────────────────
 const langPickerStyles = StyleSheet.create({
   selector: {
     flexDirection: 'row',
@@ -896,7 +629,6 @@ const langPickerStyles = StyleSheet.create({
   native: { fontSize: 15, fontWeight: '700', color: Colors.primary },
   english: { fontSize: 11, color: Colors.textTertiary, marginTop: 2 },
   chevron: { fontSize: 12, color: Colors.textTertiary, marginLeft: 4 },
-  // Modal
   modal: { flex: 1, backgroundColor: Colors.background, paddingTop: 16 },
   modalHeader: {
     flexDirection: 'row',

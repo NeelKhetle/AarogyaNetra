@@ -246,6 +246,39 @@ export interface Translations {
   tab_doctor: string;
   tab_profile: string;
   age_label: string;
+  start_health_check?: string;
+  result_error_title?: string;
+  result_error_desc?: string;
+
+  // Questionnaire TTS & Localization
+  answer_yes?: string;
+  answer_sometimes?: string;
+  answer_no?: string;
+  tap_to_listen?: string;
+  speaking_text?: string;
+  health_questionnaire?: string;
+  answer_for_results?: string;
+  after_questions?: string;
+  face_scan_10s?: string;
+  skip_to_scan?: string;
+  q1_text?: string;
+  q2_text?: string;
+  q3_text?: string;
+  q4_text?: string;
+  q5_text?: string;
+
+  // ABHA onboarding
+  abha_id_label?: string;
+  abha_id_hint?: string;
+  abha_id_important?: string;
+
+  // What-If / Error
+  no_scan_data?: string;
+  no_scan_data_desc?: string;
+  go_home?: string;
+  retry_scan?: string;
+  refill_questionnaire?: string;
+  troubleshooting_tips?: string;
 }
 
 // ─── Base English Object for spread fallbacks ─────────────────────────────────
@@ -319,7 +352,7 @@ export const TRANSLATIONS_EN_BASE: Translations = {
   last_scan_results: 'Last Scan Results',
   view_report: 'View Report \u2192',
   no_scans_yet: 'No scans yet',
-  no_scans_desc: 'Tap "Start Face Scan" above to begin your first health screening.',
+  no_scans_desc: 'Tap "Start Health Check" above to begin your first health screening.',
   health_trend: 'Health Trend',
   quick_access: 'Quick Access',
   health_history: 'Health History',
@@ -393,7 +426,7 @@ export const TRANSLATIONS_EN_BASE: Translations = {
   hold_steady: 'Hold Steady',
   scan_processing: 'Analyzing your health...',
   select_camera_mode: 'Select Camera Mode',
-  start_scan: 'Start Face Scan',
+  start_scan: 'Start Scan',
   scan_instruction: 'Align your face, hold steady \u00b7 AI analyses in ~15 seconds',
   reports: 'reports',
   full_records: 'Full Records',
@@ -410,6 +443,33 @@ export const TRANSLATIONS_EN_BASE: Translations = {
   tab_doctor: 'Doctor',
   tab_profile: 'Profile',
   age_label: 'age',
+  start_health_check: 'Start Health Check',
+  result_error_title: 'Unable to Generate Result',
+  result_error_desc: 'Please try again. If the problem persists, refill the questionnaire.',
+  answer_yes: 'Yes',
+  answer_sometimes: 'Sometimes',
+  answer_no: 'No',
+  tap_to_listen: 'Tap to listen',
+  speaking_text: 'Speaking...',
+  health_questionnaire: 'Health Questionnaire',
+  answer_for_results: 'Answer to get personalised results',
+  after_questions: 'After questions:',
+  face_scan_10s: 'Face Scan (10s)',
+  skip_to_scan: 'Skip questions → Go to scan directly',
+  q1_text: 'Do you feel very thirsty often or urinate frequently?',
+  q2_text: 'Do you get frequent headaches or feel your heart racing at rest?',
+  q3_text: 'Do you feel tired or low on energy for most of the day?',
+  q4_text: 'Do you feel breathless climbing stairs or walking quickly?',
+  q5_text: 'Do people say you look pale, or do your hands/feet feel cold?',
+  abha_id_label: 'ABHA ID (14-digit)',
+  abha_id_hint: "Don't have an ABHA ID? Visit abdm.gov.in or your nearest CSC to create one for free.",
+  abha_id_important: 'Links you to India\'s digital health ecosystem',
+  no_scan_data: 'No Scan Data',
+  no_scan_data_desc: 'Please complete a health scan first to use this feature.',
+  go_home: 'Go to Home',
+  retry_scan: 'Retry Scan',
+  refill_questionnaire: 'Refill Questionnaire',
+  troubleshooting_tips: 'Troubleshooting Tips',
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -489,7 +549,7 @@ export const TRANSLATIONS: Record<LanguageCode, Translations> = {
     last_scan_results: 'Last Scan Results',
     view_report: 'View Report →',
     no_scans_yet: 'No scans yet',
-    no_scans_desc: 'Tap "Start Face Scan" above to begin your first health screening.',
+    no_scans_desc: 'Tap "Start Health Check" above to begin your first health screening.',
     health_trend: 'Health Trend',
     quick_access: 'Quick Access',
     health_history: 'Health History',
@@ -563,7 +623,7 @@ export const TRANSLATIONS: Record<LanguageCode, Translations> = {
     hold_steady: 'Hold Steady',
     scan_processing: 'Analyzing your health...',
     select_camera_mode: 'Select Camera Mode',
-    start_scan: 'Start Face Scan',
+    start_scan: 'Start Scan',
     scan_instruction: 'Align your face, hold steady · AI analyses in ~15 seconds',
     reports: 'reports',
     full_records: 'Full Records',
@@ -580,6 +640,33 @@ export const TRANSLATIONS: Record<LanguageCode, Translations> = {
     tab_doctor: 'Doctor',
     tab_profile: 'Profile',
     age_label: 'age',
+    start_health_check: 'Start Health Check',
+    result_error_title: 'Unable to Generate Result',
+    result_error_desc: 'Please try again. If the problem persists, refill the questionnaire.',
+    answer_yes: 'Yes',
+    answer_sometimes: 'Sometimes',
+    answer_no: 'No',
+    tap_to_listen: 'Tap to listen',
+    speaking_text: 'Speaking...',
+    health_questionnaire: 'Health Questionnaire',
+    answer_for_results: 'Answer to get personalised results',
+    after_questions: 'After questions:',
+    face_scan_10s: 'Face Scan (10s)',
+    skip_to_scan: 'Skip questions → Go to scan directly',
+    q1_text: 'Do you feel very thirsty often or urinate frequently?',
+    q2_text: 'Do you get frequent headaches or feel your heart racing at rest?',
+    q3_text: 'Do you feel tired or low on energy for most of the day?',
+    q4_text: 'Do you feel breathless climbing stairs or walking quickly?',
+    q5_text: 'Do people say you look pale, or do your hands/feet feel cold?',
+    abha_id_label: 'ABHA ID (14-digit)',
+    abha_id_hint: "Don't have an ABHA ID? Visit abdm.gov.in or your nearest CSC to create one for free.",
+    abha_id_important: 'Links you to India\'s digital health ecosystem',
+    no_scan_data: 'No Scan Data',
+    no_scan_data_desc: 'Please complete a health scan first to use this feature.',
+    go_home: 'Go to Home',
+    retry_scan: 'Retry Scan',
+    refill_questionnaire: 'Refill Questionnaire',
+    troubleshooting_tips: 'Troubleshooting Tips',
   },
 
   // ═══════════════════════════════════════════════════
@@ -654,7 +741,7 @@ export const TRANSLATIONS: Record<LanguageCode, Translations> = {
     last_scan_results: 'अंतिम स्कैन परिणाम',
     view_report: 'रिपोर्ट देखें →',
     no_scans_yet: 'अभी कोई स्कैन नहीं',
-    no_scans_desc: 'अपनी पहली स्वास्थ्य जांच शुरू करने के लिए ऊपर "चेहरा स्कैन शुरू करें" टैप करें।',
+    no_scans_desc: 'अपनी पहली स्वास्थ्य जांच शुरू करने के लिए ऊपर "स्वास्थ्य जांच शुरू करें" टैप करें।',
     health_trend: 'स्वास्थ्य प्रवृत्ति',
     quick_access: 'त्वरित पहुंच',
     health_history: 'स्वास्थ्य इतिहास',
@@ -745,6 +832,33 @@ export const TRANSLATIONS: Record<LanguageCode, Translations> = {
     tab_doctor: 'डॉक्टर',
     tab_profile: 'प्रोफ़ाइल',
     age_label: 'उम्र',
+    start_health_check: 'स्वास्थ्य जांच शुरू करें',
+    result_error_title: 'परिणाम उत्पन्न करने में असमर्थ',
+    result_error_desc: 'कृपया पुनः प्रयास करें। यदि समस्या बनी रहे, तो प्रश्नावली दोबारा भरें।',
+    answer_yes: 'हाँ',
+    answer_sometimes: 'कभी-कभी',
+    answer_no: 'नहीं',
+    tap_to_listen: 'सुनने के लिए टैप करें',
+    speaking_text: 'बोल रहा है...',
+    health_questionnaire: 'स्वास्थ्य प्रश्नावली',
+    answer_for_results: 'व्यक्तिगत परिणामों के लिए उत्तर दें',
+    after_questions: 'प्रश्नों के बाद:',
+    face_scan_10s: 'चेहरा स्कैन (10 सेकंड)',
+    skip_to_scan: 'प्रश्न छोड़ें → सीधे स्कैन पर जाएं',
+    q1_text: 'क्या आपको अक्सर बहुत प्यास लगती है या बार-बार पेशाब आता है?',
+    q2_text: 'क्या आपको अक्सर सिरदर्द होता है या बिना काम के दिल तेज़ धड़कता है?',
+    q3_text: 'क्या आप अधिकांश समय थका हुआ या ऊर्जाहीन महसूस करते हैं?',
+    q4_text: 'क्या सीढ़ियाँ चढ़ते या तेज़ चलते समय साँस फूलती है?',
+    q5_text: 'क्या लोग कहते हैं आप पीले दिखते हैं, या हाथ-पैर ठंडे लगते हैं?',
+    abha_id_label: 'ABHA आईडी (14 अंक)',
+    abha_id_hint: 'ABHA आईडी नहीं है? मुफ्त में बनाने के लिए abdm.gov.in पर जाएं।',
+    abha_id_important: 'भारत के डिजिटल स्वास्थ्य पारिस्थितिकी तंत्र से जोड़ता है',
+    no_scan_data: 'कोई स्कैन डेटा नहीं',
+    no_scan_data_desc: 'इस सुविधा का उपयोग करने के लिए पहले स्वास्थ्य स्कैन पूरा करें।',
+    go_home: 'होम पर जाएं',
+    retry_scan: 'पुनः स्कैन करें',
+    refill_questionnaire: 'प्रश्नावली दोबारा भरें',
+    troubleshooting_tips: 'समस्या निवारण सुझाव',
   },
 
   // ═══════════════════════════════════════════════════

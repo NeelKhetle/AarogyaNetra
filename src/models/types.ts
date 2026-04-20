@@ -287,6 +287,7 @@ export type HistoryStackParamList = {
 
 export type ProfileStackParamList = {
   ProfileMain: undefined;
+  EditProfile: undefined;
   ResultDetail: { scanId: string };
 };
 

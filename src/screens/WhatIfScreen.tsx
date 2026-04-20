@@ -12,7 +12,7 @@ import {
   Dimensions,
 } from 'react-native';
 import Slider from '@react-native-community/slider';
-import { useRoute, RouteProp } from '@react-navigation/native';
+import { useRoute, useNavigation, RouteProp } from '@react-navigation/native';
 import { GlassCard, AnimatedButton } from '../components/common';
 import { Colors, Typography, Spacing, BorderRadius } from '../theme';
 import { useAppStore } from '../store/useAppStore';
@@ -189,22 +189,53 @@ const deltaStyles = StyleSheet.create({
 // ─── What-If Screen ────────────────────────────────────
 export const WhatIfScreen: React.FC = () => {
   const route = useRoute<RoutePropType>();
+  const navigation = useNavigation();
   const {
     getStoredScan, currentScan,
     whatIfParams, setWhatIfParam, resetWhatIfParams,
-    whatIfResult, computeWhatIf,
+    whatIfResult, computeWhatIf, setCurrentScan,
   } = useAppStore();
 
   const scan = getStoredScan(route.params.scanId) || currentScan;
 
   useEffect(() => {
-    computeWhatIf();
-  }, []);
+    // Ensure currentScan is set so computeWhatIf can work
+    if (!currentScan && route.params.scanId) {
+      setCurrentScan(route.params.scanId);
+    }
+  }, [route.params.scanId]);
+
+  useEffect(() => {
+    if (currentScan) {
+      computeWhatIf();
+    }
+  }, [currentScan]);
 
   if (!scan) {
     return (
       <View style={styles.container}>
-        <Text style={styles.loading}>Loading...</Text>
+        <View style={styles.errorContainer}>
+          <Text style={styles.errorEmoji}>📊</Text>
+          <Text style={styles.errorTitle}>No Scan Data</Text>
+          <Text style={styles.errorDesc}>
+            Please complete a health scan first to use the What-If Simulation.
+          </Text>
+          <AnimatedButton
+            title="🏠  Go to Home"
+            onPress={() => (navigation as any).navigate('Home')}
+            variant="primary"
+            size="large"
+            fullWidth
+            style={{ borderRadius: 16, marginTop: 16 }}
+          />
+          <AnimatedButton
+            title="← Go Back"
+            onPress={() => navigation.goBack()}
+            variant="outline"
+            size="small"
+            style={{ marginTop: 10 }}
+          />
+        </View>
       </View>
     );
   }
@@ -388,5 +419,29 @@ const styles = StyleSheet.create({
   resetContainer: {
     alignItems: 'center',
     marginTop: Spacing.xl,
+  },
+  // Error fallback
+  errorContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: Spacing.xxxl,
+  },
+  errorEmoji: {
+    fontSize: 64,
+    marginBottom: Spacing.lg,
+  },
+  errorTitle: {
+    ...Typography.h2,
+    color: Colors.textPrimary,
+    textAlign: 'center',
+    marginBottom: Spacing.md,
+  },
+  errorDesc: {
+    ...Typography.body,
+    color: Colors.textSecondary,
+    textAlign: 'center',
+    lineHeight: 22,
+    marginBottom: Spacing.lg,
   },
 });

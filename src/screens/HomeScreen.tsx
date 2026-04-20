@@ -7,7 +7,7 @@
  *  - Quick access to features
  */
 
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -21,6 +21,21 @@ import {
   TextInput,
   SafeAreaView,
 } from 'react-native';
+
+// Graceful TTS wrapper — uses react-native-tts if installed, otherwise a no-op
+const TtsMock = {
+  speak: (_text: string) => {},
+  stop: () => {},
+  setDefaultLanguage: (_lang: string) => {},
+};
+let Tts: typeof TtsMock = TtsMock;
+try {
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  const TtsLib = require('react-native-tts').default;
+  Tts = TtsLib;
+} catch (_) {
+  // react-native-tts not installed — TTS gracefully disabled
+}
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Colors } from '../theme';
@@ -76,7 +91,7 @@ const PulseScanButton: React.FC<{ onPress: () => void; label: string; sublabel: 
           onPressOut={pressOut}
           activeOpacity={1}
         >
-          <Text style={scanBtnStyles.cameraIcon}>📷</Text>
+          <Text style={scanBtnStyles.cameraIcon}>🩺</Text>
           <Text style={scanBtnStyles.label}>{label}</Text>
           <Text style={scanBtnStyles.sublabel}>{sublabel}</Text>
         </TouchableOpacity>
@@ -270,11 +285,11 @@ const trendStyles = StyleSheet.create({
 
 // ─── Health Check Questions Modal ────────────────────
 const QUICK_QUESTIONS = [
-  { id: 'Q1', emoji: '💧', text: 'Do you feel very thirsty often or urinate frequently?' },
-  { id: 'Q2', emoji: '❤️', text: 'Do you get frequent headaches or feel your heart racing at rest?' },
-  { id: 'Q3', emoji: '😴', text: 'Do you feel tired or low on energy for most of the day?' },
-  { id: 'Q4', emoji: '😮‍💨', text: 'Do you feel breathless climbing stairs or walking quickly?' },
-  { id: 'Q5', emoji: '🌡️', text: 'Do people say you look pale, or do your hands/feet feel cold?' },
+  { id: 'Q1', emoji: '💧', key: 'q1_text' as const },
+  { id: 'Q2', emoji: '❤️', key: 'q2_text' as const },
+  { id: 'Q3', emoji: '😴', key: 'q3_text' as const },
+  { id: 'Q4', emoji: '😮‍💨', key: 'q4_text' as const },
+  { id: 'Q5', emoji: '🌡️', key: 'q5_text' as const },
 ];
 
 type QuickAnswer = 'yes' | 'sometimes' | 'no';
@@ -282,11 +297,58 @@ type QuickAnswer = 'yes' | 'sometimes' | 'no';
 const HealthCheckModal: React.FC<{ visible: boolean; onClose: () => void; onProceed: () => void }> = ({ visible, onClose, onProceed }) => {
   const [step, setStep] = useState(0);
   const [answers, setAnswers] = useState<Record<string, QuickAnswer>>({});
+  const [isSpeaking, setIsSpeaking] = useState(false);
   const slideAnim = useRef(new Animated.Value(0)).current;
   const { t } = useLanguage();
+  const { language } = useAppStore();
+
+  // Language → TTS locale mapping for all supported languages
+  const TTS_LOCALE_MAP: Record<string, string> = {
+    en: 'en-IN', hi: 'hi-IN', bn: 'bn-IN', te: 'te-IN', mr: 'mr-IN',
+    ta: 'ta-IN', gu: 'gu-IN', kn: 'kn-IN', ml: 'ml-IN', pa: 'pa-IN',
+    or: 'or-IN', as: 'as-IN', ur: 'ur-IN', sa: 'sa-IN', kok: 'kok-IN',
+    mni: 'mni-IN', doi: 'hi-IN', sat: 'hi-IN', bho: 'hi-IN', mai: 'hi-IN',
+    raj: 'hi-IN', ks: 'ur-IN', sd: 'ur-IN',
+    es: 'es-ES', fr: 'fr-FR', de: 'de-DE', pt: 'pt-BR', ar: 'ar-SA',
+    zh: 'zh-CN', ja: 'ja-JP', ko: 'ko-KR', ru: 'ru-RU', sw: 'sw-KE',
+    id: 'id-ID', tr: 'tr-TR', vi: 'vi-VN',
+  };
 
   const currentQ = QUICK_QUESTIONS[step];
   const isLast = step === QUICK_QUESTIONS.length - 1;
+
+  // Get the text for the current question in the user's language
+  const questionText = t(currentQ.key) || currentQ.key;
+
+  // Speak question using TTS
+  const speakQuestion = useCallback(() => {
+    try {
+      const lang = TTS_LOCALE_MAP[language] || 'en-IN';
+      Tts.setDefaultLanguage(lang);
+      Tts.speak(questionText);
+      setIsSpeaking(true);
+      setTimeout(() => setIsSpeaking(false), 3500);
+    } catch (e) {
+      // TTS not available in all environments, silently ignore
+    }
+  }, [questionText, language]);
+
+  // Auto-speak question when step changes or modal becomes visible
+  useEffect(() => {
+    if (visible && questionText) {
+      // Small delay to let the animation settle
+      const timer = setTimeout(() => speakQuestion(), 400);
+      return () => clearTimeout(timer);
+    }
+  }, [step, visible]);
+
+  // Stop TTS when modal closes
+  useEffect(() => {
+    if (!visible) {
+      try { Tts.stop(); } catch (_) {}
+      setIsSpeaking(false);
+    }
+  }, [visible]);
 
   const animateNext = () => {
     Animated.sequence([
@@ -296,9 +358,10 @@ const HealthCheckModal: React.FC<{ visible: boolean; onClose: () => void; onProc
   };
 
   const handleAnswer = (answer: QuickAnswer) => {
+    try { Tts.stop(); } catch (_) {}
+    setIsSpeaking(false);
     setAnswers(prev => ({ ...prev, [currentQ.id]: answer }));
     if (isLast) {
-      // Last question answered — proceed to scanner
       setTimeout(() => {
         setStep(0);
         setAnswers({});
@@ -311,6 +374,7 @@ const HealthCheckModal: React.FC<{ visible: boolean; onClose: () => void; onProc
   };
 
   const handleClose = () => {
+    try { Tts.stop(); } catch (_) {}
     setStep(0);
     setAnswers({});
     onClose();
@@ -322,26 +386,47 @@ const HealthCheckModal: React.FC<{ visible: boolean; onClose: () => void; onProc
         {/* Header */}
         <View style={healthModalStyles.header}>
           <View>
-            <Text style={healthModalStyles.title}>🩺 Health Check</Text>
-            <Text style={healthModalStyles.subtitle}>Answer to get personalized results</Text>
+            <Text style={healthModalStyles.title}>🩺 {t('health_questionnaire') || 'Health Questionnaire'}</Text>
+            <Text style={healthModalStyles.subtitle}>{t('answer_for_results') || 'Answer to get personalised results'}</Text>
           </View>
           <TouchableOpacity onPress={handleClose} style={healthModalStyles.closeBtn}>
             <Text style={healthModalStyles.closeText}>✕</Text>
           </TouchableOpacity>
         </View>
 
-        {/* Progress bar */}
+        {/* Step progress indicator */}
+        <View style={healthModalStyles.stepRow}>
+          {QUICK_QUESTIONS.map((_, i) => (
+            <View key={i} style={[
+              healthModalStyles.stepDot,
+              i <= step && healthModalStyles.stepDotActive,
+              i < step && healthModalStyles.stepDotDone,
+            ]} />
+          ))}
+        </View>
         <View style={healthModalStyles.progressTrack}>
           <View style={[healthModalStyles.progressFill, { width: `${((step + 1) / QUICK_QUESTIONS.length) * 100}%` }]} />
         </View>
         <Text style={healthModalStyles.progressLabel}>
-          Question {step + 1} of {QUICK_QUESTIONS.length}
+          {t('questionnaire_title')} {step + 1} {t('question_of')} {QUICK_QUESTIONS.length}
         </Text>
 
-        {/* Question */}
+        {/* Question with TTS speaker */}
         <Animated.View style={[healthModalStyles.questionArea, { transform: [{ translateX: slideAnim }] }]}>
           <Text style={healthModalStyles.qEmoji}>{currentQ.emoji}</Text>
-          <Text style={healthModalStyles.qText}>{currentQ.text}</Text>
+          <Text style={healthModalStyles.qText}>{questionText}</Text>
+
+          {/* 🔊 TTS Speaker Button */}
+          <TouchableOpacity
+            style={[healthModalStyles.speakerBtn, isSpeaking && healthModalStyles.speakerBtnActive]}
+            onPress={speakQuestion}
+            activeOpacity={0.8}
+          >
+            <Text style={healthModalStyles.speakerIcon}>{isSpeaking ? '🔊' : '🔈'}</Text>
+            <Text style={healthModalStyles.speakerText}>
+              {isSpeaking ? (t('speaking_text') || 'Speaking...') : (t('tap_to_listen') || 'Tap to listen')}
+            </Text>
+          </TouchableOpacity>
         </Animated.View>
 
         {/* Answer options */}
@@ -366,7 +451,7 @@ const HealthCheckModal: React.FC<{ visible: boolean; onClose: () => void; onProc
                 healthModalStyles.answerLabel,
                 answers[currentQ.id] === opt && { color: '#fff', fontWeight: '800' },
               ]}>
-                {opt === 'yes' ? 'Yes' : opt === 'sometimes' ? 'Sometimes' : 'No'}
+                {opt === 'yes' ? (t('answer_yes') || 'Yes') : opt === 'sometimes' ? (t('answer_sometimes') || 'Sometimes') : (t('answer_no') || 'No')}
               </Text>
             </TouchableOpacity>
           ))}
@@ -374,28 +459,28 @@ const HealthCheckModal: React.FC<{ visible: boolean; onClose: () => void; onProc
 
         {/* What's next banner */}
         <View style={healthModalStyles.nextBanner}>
-          <Text style={healthModalStyles.nextTitle}>📷 After questions:</Text>
+          <Text style={healthModalStyles.nextTitle}>📷 {t('after_questions') || 'After questions:'}</Text>
           <View style={healthModalStyles.nextSteps}>
             <View style={healthModalStyles.nextStep}>
               <Text style={healthModalStyles.nextStepIcon}>1️⃣</Text>
-              <Text style={healthModalStyles.nextStepText}>Face Scan (10 sec)</Text>
+              <Text style={healthModalStyles.nextStepText}>{t('face_scan_10s') || 'Face Scan (10s)'}</Text>
             </View>
             <Text style={healthModalStyles.nextArrow}>→</Text>
             <View style={healthModalStyles.nextStep}>
               <Text style={healthModalStyles.nextStepIcon}>2️⃣</Text>
-              <Text style={healthModalStyles.nextStepText}>Eye Scan</Text>
+              <Text style={healthModalStyles.nextStepText}>{t('eye_scan_label')}</Text>
             </View>
             <Text style={healthModalStyles.nextArrow}>→</Text>
             <View style={healthModalStyles.nextStep}>
               <Text style={healthModalStyles.nextStepIcon}>📊</Text>
-              <Text style={healthModalStyles.nextStepText}>Results</Text>
+              <Text style={healthModalStyles.nextStepText}>{t('step_report')}</Text>
             </View>
           </View>
         </View>
 
         {/* Skip option */}
         <TouchableOpacity onPress={onProceed} style={healthModalStyles.skipBtn}>
-          <Text style={healthModalStyles.skipText}>Skip questions → Go to scan directly</Text>
+          <Text style={healthModalStyles.skipText}>{t('skip_to_scan') || 'Skip questions → Go to scan directly'}</Text>
         </TouchableOpacity>
       </SafeAreaView>
     </Modal>
@@ -409,12 +494,22 @@ const healthModalStyles = StyleSheet.create({
   subtitle: { fontSize: 13, color: Colors.textTertiary, marginTop: 2 },
   closeBtn: { width: 34, height: 34, borderRadius: 17, backgroundColor: Colors.surfaceContainerLow, alignItems: 'center', justifyContent: 'center' },
   closeText: { fontSize: 14, fontWeight: '700', color: Colors.textSecondary },
+  // Step dots
+  stepRow: { flexDirection: 'row', justifyContent: 'center', gap: 8, marginHorizontal: 24, marginBottom: 10 },
+  stepDot: { width: 10, height: 10, borderRadius: 5, backgroundColor: Colors.surfaceContainerLow, borderWidth: 1.5, borderColor: Colors.surfaceBorder },
+  stepDotActive: { backgroundColor: `${Colors.primary}40`, borderColor: Colors.primary },
+  stepDotDone: { backgroundColor: Colors.primary, borderColor: Colors.primary },
   progressTrack: { height: 6, backgroundColor: Colors.surfaceContainerLow, marginHorizontal: 24, borderRadius: 3, overflow: 'hidden' },
   progressFill: { height: 6, backgroundColor: Colors.primary, borderRadius: 3 },
   progressLabel: { fontSize: 11, color: Colors.textTertiary, textAlign: 'center', marginTop: 6, marginBottom: 8 },
   questionArea: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 32, paddingBottom: 8 },
   qEmoji: { fontSize: 56, marginBottom: 20 },
   qText: { fontSize: 19, fontWeight: '700', color: Colors.textPrimary, textAlign: 'center', lineHeight: 27 },
+  // TTS Speaker
+  speakerBtn: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 18, backgroundColor: Colors.surfaceContainerLow, borderRadius: 999, paddingHorizontal: 18, paddingVertical: 10, borderWidth: 1, borderColor: Colors.surfaceBorder },
+  speakerBtnActive: { backgroundColor: `${Colors.primary}15`, borderColor: Colors.primary },
+  speakerIcon: { fontSize: 20 },
+  speakerText: { fontSize: 13, fontWeight: '600', color: Colors.textSecondary },
   answerArea: { paddingHorizontal: 24, gap: 10, marginBottom: 16 },
   answerBtn: { flexDirection: 'row', alignItems: 'center', gap: 14, borderRadius: 16, paddingVertical: 16, paddingHorizontal: 20, borderWidth: 1.5, borderColor: Colors.surfaceBorder, backgroundColor: '#fff' },
   answerBtnActive: { borderColor: Colors.primary },
@@ -571,11 +666,11 @@ export const HomeScreen: React.FC = () => {
           }}
         />
 
-        {/* ── Primary CTA — Check Scan ── */}
+        {/* ── Primary CTA — Start Health Check ── */}
         <View style={styles.scanSection}>
           <PulseScanButton
             onPress={() => setHealthCheckVisible(true)}
-            label={t('start_scan')}
+            label={t('start_health_check') || 'Start Health Check'}
             sublabel={`${t('step_questions')} → ${t('step_face_scan')} → ${t('eye_scan_label')}`}
           />
           <Text style={styles.scanHint}>{t('scan_hint')}</Text>

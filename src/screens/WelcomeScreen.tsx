@@ -424,6 +424,8 @@ const ProfileSetupStep: React.FC<{ onComplete: () => void }> = ({ onComplete }) 
   const [weight, setWeight] = useState('');
   const [height, setHeight] = useState('');
   const [gender, setGender] = useState<'male' | 'female' | 'other'>('male');
+  const [abhaId, setAbhaId] = useState('');
+  const [abhaError, setAbhaError] = useState<string | undefined>();
   const fade = useRef(new Animated.Value(0)).current;
   useEffect(() => { Animated.timing(fade, { toValue: 1, duration: 400, useNativeDriver: true }).start(); }, []);
 
@@ -433,6 +435,17 @@ const ProfileSetupStep: React.FC<{ onComplete: () => void }> = ({ onComplete }) 
     { value: 'other'  as const, label: tr.other,  emoji: '🧑' },
   ];
 
+  // ABHA validation
+  const handleAbhaChange = (text: string) => {
+    setAbhaId(text);
+    const cleaned = text.replace(/[\s-]/g, '');
+    if (cleaned.length === 0) { setAbhaError(undefined); return; }
+    if (!/^\d+$/.test(cleaned)) { setAbhaError('ABHA ID must contain only numbers'); return; }
+    if (cleaned.length < 14) { setAbhaError(`Enter 14 digits (${cleaned.length}/14 entered)`); return; }
+    if (cleaned.length > 14) { setAbhaError('ABHA ID must be exactly 14 digits'); return; }
+    setAbhaError(undefined);
+  };
+
   const handleDone = () => {
     if (!name.trim())                                   return Alert.alert('⚠️', tr.missing_name);
     const a = parseInt(age, 10);
@@ -440,9 +453,19 @@ const ProfileSetupStep: React.FC<{ onComplete: () => void }> = ({ onComplete }) 
     if (!weight || parseFloat(weight) < 10)             return Alert.alert('⚠️', tr.invalid_weight);
     if (!height || parseFloat(height) < 50)             return Alert.alert('⚠️', tr.invalid_height);
 
+    // Validate ABHA if entered
+    const cleanedAbha = abhaId.replace(/[\s-]/g, '');
+    if (cleanedAbha.length > 0 && cleanedAbha.length !== 14) {
+      return Alert.alert('⚠️', 'ABHA ID must be exactly 14 digits or left empty.');
+    }
+
     const h = parseFloat(height) / 100;
     const bmi = parseFloat((parseFloat(weight) / (h * h)).toFixed(1));
-    setUser({ name: name.trim(), age: a, gender, weight: parseFloat(weight), height: parseFloat(height), bmi });
+    setUser({
+      name: name.trim(), age: a, gender,
+      weight: parseFloat(weight), height: parseFloat(height), bmi,
+      abhaId: cleanedAbha.length === 14 ? cleanedAbha : undefined,
+    });
     onComplete();
   };
 
@@ -505,6 +528,20 @@ const ProfileSetupStep: React.FC<{ onComplete: () => void }> = ({ onComplete }) 
             </View>
           </View>
 
+          {/* ABHA ID */}
+          <View style={pss.abhaSection}>
+            <Text style={pss.label}>🏥 {tr.abha_id_label || 'ABHA ID (14-digit)'}</Text>
+            <Text style={pss.abhaHint}>{tr.abha_id_important || "Links you to India's digital health ecosystem"}</Text>
+            <TextInput style={[pss.input, abhaError ? { borderColor: '#ef4444' } : {}]} value={abhaId} onChangeText={handleAbhaChange}
+              placeholder="XX-XXXX-XXXX-XXXX" placeholderTextColor={Colors.textTertiary}
+              keyboardType="numeric" maxLength={17}
+            />
+            {abhaError && <Text style={pss.abhaError}>⚠️ {abhaError}</Text>}
+            {!abhaId && (
+              <Text style={pss.abhaCreateHint}>💡 {tr.abha_id_hint || "Don't have an ABHA ID? Visit abdm.gov.in or your nearest CSC to create one for free."}</Text>
+            )}
+          </View>
+
           {/* Privacy */}
           <View style={pss.privacy}>
             <Text style={pss.privacyTxt}>{tr.privacy_badge}</Text>
@@ -529,6 +566,10 @@ const pss = StyleSheet.create({
   chipTxt:   { fontSize: 13, fontWeight: '600', color: Colors.textSecondary },
   privacy:   { alignItems: 'center', marginVertical: 10 },
   privacyTxt:{ fontSize: 12, color: Colors.textTertiary, textAlign: 'center' },
+  abhaSection: { marginTop: 12, backgroundColor: 'rgba(0,110,47,0.04)', borderRadius: 14, padding: 14, borderWidth: 1, borderColor: 'rgba(0,110,47,0.12)' },
+  abhaHint:    { fontSize: 12, color: Colors.textTertiary, marginBottom: 8, lineHeight: 17 },
+  abhaError:   { fontSize: 12, color: '#ef4444', marginTop: 4 },
+  abhaCreateHint: { fontSize: 12, color: Colors.primary, marginTop: 8, fontStyle: 'italic', lineHeight: 17 },
 });
 
 // ═══════════════════════════════════════════════════════
